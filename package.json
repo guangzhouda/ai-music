@@ -1,0 +1,24 @@
+{
+  "name": "ai-music-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace @ai-music/server\" \"npm run dev --workspace @ai-music/web\"",
+    "dev:web": "npm run dev --workspace @ai-music/web",
+    "dev:server": "npm run dev --workspace @ai-music/server",
+    "build": "npm run build --workspace @ai-music/types && npm run build --workspace @ai-music/config && npm run build --workspace @ai-music/ui && npm run build --workspace @ai-music/server && npm run build --workspace @ai-music/web",
+    "check": "npm run build",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2"
+  }
+}
+
