@@ -32,6 +32,27 @@ export interface SunoTaskDetails {
 export class SunoClient {
   constructor(private readonly config: Env) {}
 
+  private get callbackUrl() {
+    return this.config.sunoCallbackUrl.trim() || `http://localhost:${this.config.port}/api/providers/suno/callback`;
+  }
+
+  private async fetchWithRetry(url: string | URL, init: RequestInit, attempts = 2) {
+    let lastError: unknown;
+
+    for (let index = 0; index < attempts; index += 1) {
+      try {
+        return await fetch(url, init);
+      } catch (error) {
+        lastError = error;
+        if (index < attempts - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 900));
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
   private resolveStyleText(stylePrompt: string) {
     const styleRule =
       genreRules.find((rule) => rule.slug === stylePrompt) ??
@@ -49,7 +70,7 @@ export class SunoClient {
   }
 
   get callbackConfigured() {
-    return Boolean(this.config.sunoCallbackUrl);
+    return Boolean(this.config.sunoCallbackUrl.trim());
   }
 
   async createMusic(payload: SunoCreatePayload): Promise<SunoCreateResult> {
@@ -80,11 +101,9 @@ export class SunoClient {
       requestBody.vocalGender = payload.vocalGender;
     }
 
-    if (this.config.sunoCallbackUrl) {
-      requestBody.callBackUrl = this.config.sunoCallbackUrl;
-    }
+    requestBody.callBackUrl = this.callbackUrl;
 
-    const response = await fetch(`${this.config.sunoBaseUrl}${this.config.sunoGeneratePath}`, {
+    const response = await this.fetchWithRetry(`${this.config.sunoBaseUrl}${this.config.sunoGeneratePath}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.config.sunoApiKey}`,
@@ -99,11 +118,20 @@ export class SunoClient {
 
     const raw = (await response.json()) as Record<string, unknown>;
 
+    const businessCode = typeof raw.code === "number" ? raw.code : 200;
+    if (businessCode !== 200) {
+      throw new Error(String(raw.msg ?? raw.message ?? "Suno API create failed"));
+    }
+
     const providerTaskId =
       (typeof raw?.data === "object" && raw?.data !== null && "taskId" in raw.data
         ? String((raw.data as { taskId?: unknown }).taskId ?? "")
         : "") ||
-      String(raw.taskId ?? raw.id ?? makeId("suno"));
+      String(raw.taskId ?? raw.id ?? "");
+
+    if (!providerTaskId) {
+      throw new Error("Suno API create failed: missing taskId");
+    }
 
     return {
       providerTaskId,
@@ -129,7 +157,7 @@ export class SunoClient {
     const url = new URL(`${this.config.sunoBaseUrl}${this.config.sunoDetailsPath}`);
     url.searchParams.set("taskId", taskId);
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       headers: {
         Authorization: `Bearer ${this.config.sunoApiKey}`
       }
@@ -140,6 +168,12 @@ export class SunoClient {
     }
 
     const raw = (await response.json()) as Record<string, any>;
+    const businessCode = typeof raw.code === "number" ? raw.code : 200;
+
+    if (businessCode !== 200) {
+      throw new Error(String(raw.msg ?? raw.message ?? "Suno API details failed"));
+    }
+
     const payload = raw?.data;
 
     if (payload == null) {
@@ -199,7 +233,7 @@ export class SunoClient {
       };
     }
 
-    const response = await fetch(`${this.config.sunoBaseUrl}${this.config.sunoCreditsPath}`, {
+    const response = await this.fetchWithRetry(`${this.config.sunoBaseUrl}${this.config.sunoCreditsPath}`, {
       headers: {
         Authorization: `Bearer ${this.config.sunoApiKey}`
       }
@@ -210,6 +244,12 @@ export class SunoClient {
     }
 
     const raw = (await response.json()) as Record<string, any>;
+    const businessCode = typeof raw.code === "number" ? raw.code : 200;
+
+    if (businessCode !== 200) {
+      throw new Error(String(raw.msg ?? raw.message ?? "Suno API credits failed"));
+    }
+
     const creditsRemaining = Number(
       typeof raw?.data === "number" ? raw.data : raw?.data?.credits ?? raw?.credits ?? 0
     );

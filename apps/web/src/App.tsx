@@ -121,6 +121,18 @@ function buildStyleText(rules: GenreRule[], styleRuleSlug: string, customNotes: 
   return segments.join("，");
 }
 
+function getNovelModeLabel(mode: string) {
+  const modeLabelMap: Record<string, string> = {
+    "novel-full": "全文成歌",
+    "novel-excerpt": "节选成歌",
+    "character-theme": "角色主题曲",
+    "scene-score": "场景配乐",
+    "style-remix": "风格重编"
+  };
+
+  return modeLabelMap[mode] ?? "小说成歌";
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit) {
   let response: Response;
   const headers = new Headers(init?.headers);
@@ -843,6 +855,14 @@ function NovelStudioPage(props: {
   });
   const draftStale = Boolean(draftSignature) && draftSignature !== currentDraftSignature;
 
+  function fallbackNovelTitle() {
+    if (!activeDocument) {
+      return "";
+    }
+
+    return `${activeDocument.title} · ${getNovelModeLabel(mode)}${makeInstrumental ? " · 纯音乐" : ""}`;
+  }
+
   useEffect(() => {
     if (!props.documents.length) {
       if (documentId) {
@@ -947,7 +967,7 @@ function NovelStudioPage(props: {
           excerpt
         })
       });
-      setDraftTitle(draft.title);
+      setDraftTitle(draft.title.trim().length >= 2 ? draft.title : fallbackNovelTitle());
       setDraftPrompt(draft.prompt);
       setDraftStylePrompt(draft.stylePrompt);
       setDraftSignature(currentDraftSignature);
@@ -1774,7 +1794,7 @@ function AccountPage(props: {
           <Metric title="Provider" value={props.account.provider} />
           <Metric title="Mode" value={props.account.mode} />
           <Metric title="Credits" value={String(props.account.creditsRemaining)} />
-          <Metric title="Callback" value={props.account.callbackConfigured ? "On" : "Off"} />
+          <Metric title="Callback" value={props.account.callbackConfigured ? "自定义公网" : "本地占位"} />
         </div>
         <p className="footnote">最近查询时间：{props.account.lastCheckedAt ?? "尚未同步"}</p>
       </Panel>
@@ -1928,7 +1948,7 @@ function SettingsPage(_props: { onSaved: () => Promise<void> }) {
                 onClick={() => patchSetting("sunoCallbackUrl", "")}
                 type="button"
               >
-                已关闭
+                使用本地占位地址
               </button>
               <button
                 className={cx("toggle-chip", callbackEnabled && "toggle-chip-active")}
@@ -1944,7 +1964,7 @@ function SettingsPage(_props: { onSaved: () => Promise<void> }) {
               </button>
             </div>
             <span className="field-hint">
-              本地开发建议关闭。只有公网可访问地址才适合填在这里，`localhost` 不会被 Suno 外部服务回调到。
+              这个 provider 实际要求请求里带 `callBackUrl`。如果你不填，服务端会自动回退到本地占位地址，仅用于满足参数要求；真正的状态更新仍然依赖轮询。
             </span>
           </div>
           <div className="form-grid">

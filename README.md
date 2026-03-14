@@ -194,9 +194,10 @@ DEEPSEEK_MODEL=deepseek-chat
 
 注意：
 
-- 项目现在默认关闭 callback，本地开发只走轮询
+- 这个 provider 的 `generate` 实际要求请求里带 `callBackUrl`
+- 如果 `SUNO_CALLBACK_URL` 留空，服务端会自动回退到本地占位地址 `http://localhost:8787/api/providers/suno/callback`
+- 本地占位地址不会真的收到公网回调，状态仍主要依赖轮询
 - 只有公网可访问地址才适合填到 `SUNO_CALLBACK_URL`
-- `localhost` 形式的 callback 对外部 provider 不可访问，不应作为 live 回调地址
 
 ## Suno 参数支持
 
@@ -222,7 +223,7 @@ DEEPSEEK_MODEL=deepseek-chat
 - DeepSeek API Key / Base URL / Model
 - 火山引擎 Access Key / Secret Key / Region / Model
 - Mock 模式开关
-- Suno callback 开关与公网回调地址
+- Suno callback 配置与公网回调地址
 
 保存后的运行时配置会持久化到：
 
@@ -245,7 +246,7 @@ DEEPSEEK_MODEL=deepseek-chat
 ## 当前已知边界
 
 - Suno live 任务在某些情况下会返回 `taskId` 但详情为空，需要继续做更稳的重试和失效处理
-- 本地 callback 默认关闭，live 模式下如果要启用回调，必须提供公网 URL
+- 如果不提供公网 callback，系统会自动使用本地占位地址满足 provider 参数要求
 - 小说成歌当前仍以“LLM 理解 + 检索增强 + 提示词拼装”为主，不是完整歌词编辑器
 - 当前存储仍是本地 JSON 快照，后续应迁移到真实数据库
 

@@ -14,6 +14,23 @@ import { buildChunks, retrieveRelevant } from "./knowledge-service.js";
 export class NovelService {
   constructor(private readonly deepseekClient: DeepSeekClient) {}
 
+  private resolveTitle(document: NovelDocument, input: NovelCreateInput, draftTitle: string) {
+    const trimmed = draftTitle.trim();
+    if (trimmed.length >= 2) {
+      return trimmed;
+    }
+
+    const modeLabelMap: Record<NovelCreateInput["mode"], string> = {
+      "novel-full": "全文成歌",
+      "novel-excerpt": "节选成歌",
+      "character-theme": "角色主题曲",
+      "scene-score": "场景配乐",
+      "style-remix": "风格重编"
+    };
+
+    return `${document.title} · ${modeLabelMap[input.mode]}${input.makeInstrumental ? " · 纯音乐" : ""}`;
+  }
+
   async importNovel(title: string, text: string) {
     const id = makeId("doc");
     const createdAt = now();
@@ -67,7 +84,7 @@ export class NovelService {
     const draft = await this.previewNovelSong(document, input);
 
     return {
-      title: input.title?.trim() || draft.title,
+      title: this.resolveTitle(document, input, input.title?.trim() || draft.title),
       prompt: input.prompt?.trim() || draft.prompt,
       stylePrompt: input.stylePrompt.trim() || draft.stylePrompt
     };
