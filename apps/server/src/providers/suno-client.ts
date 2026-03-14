@@ -26,6 +26,15 @@ export interface SunoTaskDetails {
   lyricsSnippet: string;
   durationSeconds: number | null;
   errorMessage: string | null;
+  clips: Array<{
+    clipId: string;
+    title: string | null;
+    audioUrl: string | null;
+    coverUrl: string | null;
+    lyricsSnippet: string;
+    durationSeconds: number | null;
+    raw: unknown;
+  }>;
   raw: unknown;
 }
 
@@ -147,6 +156,20 @@ export class SunoClient {
         lyricsSnippet: `Mock lyrics for ${fallbackPrompt.slice(0, 80)}`,
         durationSeconds: 132,
         errorMessage: null,
+        clips: [
+          {
+            clipId: `${taskId}:clip-1`,
+            title: "Mock Song A",
+            audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+            coverUrl: null,
+            lyricsSnippet: `Mock lyrics for ${fallbackPrompt.slice(0, 80)}`,
+            durationSeconds: 132,
+            raw: {
+              mode: "mock",
+              clip: 1
+            }
+          }
+        ],
         raw: {
           mode: "mock",
           taskId
@@ -183,6 +206,7 @@ export class SunoClient {
         lyricsSnippet: fallbackPrompt,
         durationSeconds: null,
         errorMessage: "Provider details returned empty data",
+        clips: [],
         raw
       };
     }
@@ -195,12 +219,56 @@ export class SunoClient {
         : Array.isArray(topLevel)
           ? topLevel
           : [];
-    const clip = sunoData[0] ?? topLevel?.response?.sunoData?.[0] ?? topLevel;
+    const clips = sunoData.map((entry: Record<string, unknown>, index: number) => ({
+      clipId: String(entry?.id ?? entry?.audioId ?? entry?.musicId ?? `${taskId}:clip-${index + 1}`),
+      title: typeof entry?.title === "string" && entry.title.trim() ? entry.title.trim() : null,
+      audioUrl:
+        typeof entry?.audioUrl === "string"
+          ? entry.audioUrl
+          : typeof entry?.audio_url === "string"
+            ? entry.audio_url
+            : typeof entry?.streamAudioUrl === "string"
+              ? entry.streamAudioUrl
+              : typeof entry?.stream_audio_url === "string"
+                ? entry.stream_audio_url
+                : null,
+      coverUrl:
+        typeof entry?.imageUrl === "string"
+          ? entry.imageUrl
+          : typeof entry?.image_url === "string"
+            ? entry.image_url
+            : null,
+      lyricsSnippet:
+        typeof entry?.lyric === "string"
+          ? entry.lyric
+          : typeof entry?.lyrics === "string"
+            ? entry.lyrics
+            : typeof entry?.prompt === "string"
+              ? entry.prompt
+              : fallbackPrompt,
+      durationSeconds:
+        typeof entry?.duration === "number"
+          ? entry.duration
+          : typeof entry?.durationSeconds === "number"
+            ? entry.durationSeconds
+            : null,
+      raw: entry
+    }));
+    const clip = clips[0] ?? null;
     const status = String(topLevel?.status ?? clip?.status ?? raw?.status ?? "queued").toUpperCase();
 
     const succeededStatuses = new Set(["SUCCESS", "COMPLETED"]);
     const runningStatuses = new Set(["RUNNING", "TEXT_SUCCESS", "FIRST_SUCCESS", "PROCESSING", "IN_PROGRESS"]);
-    const failedStatuses = new Set(["FAILED", "CREATE_TASK_FAILED", "ERROR", "TIMEOUT", "CANCELLED"]);
+    const failedStatuses = new Set([
+      "FAILED",
+      "CREATE_TASK_FAILED",
+      "GENERATE_AUDIO_FAILED",
+      "CALLBACK_EXCEPTION",
+      "SENSITIVE_WORD_ERROR",
+      "ERROR",
+      "TIMEOUT",
+      "CANCELLED"
+    ]);
 
     return {
       status: succeededStatuses.has(status)
@@ -210,15 +278,13 @@ export class SunoClient {
           : runningStatuses.has(status)
             ? "running"
             : "queued",
-      audioUrl:
-        clip?.audioUrl ??
-        clip?.audio_url ??
-        clip?.streamAudioUrl ??
-        clip?.stream_audio_url ??
-        null,
-      lyricsSnippet: clip?.lyric ?? clip?.lyrics ?? clip?.prompt ?? fallbackPrompt,
-      durationSeconds: clip?.duration ?? clip?.durationSeconds ?? null,
-      errorMessage: failedStatuses.has(status) ? String(clip?.errorMessage ?? clip?.error_message ?? raw?.msg ?? "Provider generation failed") : null,
+      audioUrl: clip?.audioUrl ?? null,
+      lyricsSnippet: clip?.lyricsSnippet ?? fallbackPrompt,
+      durationSeconds: clip?.durationSeconds ?? null,
+      errorMessage: failedStatuses.has(status)
+        ? String(topLevel?.errorMessage ?? topLevel?.response?.errorMessage ?? raw?.msg ?? "Provider generation failed")
+        : null,
+      clips,
       raw
     };
   }

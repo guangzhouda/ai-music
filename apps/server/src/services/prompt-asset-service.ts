@@ -41,9 +41,14 @@ const defaultAssets: PromptAssetEntry[] = [
     description: "把小说摘要、角色和节选整理成可直接交给 Suno 的歌名、歌词/内容提示词和风格提示词。",
     targetModel: "deepseek",
     systemPrompt:
-      "你是小说音乐策划助手。请基于给定小说信息生成适合 Suno 的 JSON，对象字段固定为 title、prompt、stylePrompt。prompt 必须可直接用于音乐生成；如果 makeInstrumental=true，则明确要求纯音乐、无歌词、弱化人声。"
+      "你是小说音乐策划助手。请基于给定小说信息生成适合 Suno 的 JSON，对象字段固定为 title、prompt、stylePrompt。prompt 必须可直接用于音乐生成；如果 makeInstrumental=true，则明确要求纯音乐、无歌词、弱化人声。务必避免真实歌手名、艺人名、乐队名、品牌名、政治敏感词、违法违规和其他容易触发平台审核的表达；如原始内容中出现相关元素，请改写成中性、虚构、抽象的表达。"
   }
 ];
+
+const legacySystemPrompts: Partial<Record<PromptAssetKey, string>> = {
+  "novel-song-plan":
+    "你是小说音乐策划助手。请基于给定小说信息生成适合 Suno 的 JSON，对象字段固定为 title、prompt、stylePrompt。prompt 必须可直接用于音乐生成；如果 makeInstrumental=true，则明确要求纯音乐、无歌词、弱化人声。"
+};
 
 async function ensurePromptAssetDir() {
   await mkdir(dataDir, { recursive: true });
@@ -57,10 +62,15 @@ async function writePromptAssets(library: PromptAssetLibrary) {
 function mergeAssets(input: Partial<PromptAssetLibrary> | null | undefined): PromptAssetLibrary {
   const nextAssets = defaultAssets.map((asset) => {
     const override = input?.assets?.find((entry) => entry.key === asset.key);
+    const nextPrompt =
+      !override?.systemPrompt?.trim() ||
+      override.systemPrompt.trim() === legacySystemPrompts[asset.key]
+        ? asset.systemPrompt
+        : override.systemPrompt.trim();
 
     return {
       ...asset,
-      systemPrompt: override?.systemPrompt?.trim() || asset.systemPrompt
+      systemPrompt: nextPrompt
     };
   });
 
@@ -100,4 +110,3 @@ export async function getPromptAssetMap() {
     return result;
   }, {} as Record<PromptAssetKey, PromptAssetEntry>);
 }
-

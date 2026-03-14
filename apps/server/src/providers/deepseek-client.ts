@@ -102,7 +102,8 @@ export function buildFallbackSongPlan(
       `参考内容：${clip(relatedText || document.summary, 800)}`,
       input.makeInstrumental
         ? "要求：仅输出纯音乐构思，不要写歌词，不要强调人声演唱。"
-        : "要求：保留人声主旋律和可记忆的副歌 Hook。"
+        : "要求：保留人声主旋律和可记忆的副歌 Hook。",
+      "安全要求：不要出现真实歌手名、艺人名、乐队名、品牌名、政治敏感词、违法违规内容；如果原文涉及这些内容，请改写成虚构、中性、抽象表达。"
     ].join("\n"),
     stylePrompt: styleText
   };

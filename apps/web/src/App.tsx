@@ -610,7 +610,7 @@ function AssetLibraryPage() {
         <SectionTitle
           eyebrow="Assets"
           title="提示词资产库"
-          description="这里维护所有会发给 DeepSeek 的系统提示词。它们不会直接发给 Suno，但会影响摘要、角色提取、小说成歌提示词草稿和最终歌词内容。"
+          description="这里维护所有会发给 DeepSeek 的系统提示词。它们不会直接发给 Suno，但会影响摘要、角色提取、小说成歌提示词草稿和最终歌词内容。建议明确要求规避真实艺人名、品牌名和其他敏感词。"
         />
         <div className="settings-toolbar">
           <div className="runtime-mode-card">
@@ -646,7 +646,7 @@ function AssetLibraryPage() {
               />
             </label>
             <p className="field-hint">
-              说明：这部分是发给 DeepSeek 的 system prompt。实际业务数据，例如全文摘要、角色、节选内容，会作为 user prompt 在运行时拼接。
+              说明：这部分是发给 DeepSeek 的 system prompt。实际业务数据，例如全文摘要、角色、节选内容，会作为 user prompt 在运行时拼接。这里可以直接加上“避免真实艺人名、规避敏感词、改写成虚构表达”等规则。
             </p>
           </Panel>
         ))}
@@ -1257,7 +1257,7 @@ function NovelStudioPage(props: {
               placeholder="这里会显示 AI 基于全文生成的歌词/内容提示词，你可以直接修改。"
             />
             <span className="field-hint">
-              Suno 会直接使用这里的内容进行歌曲生成。对人声歌曲来说，这一段通常会强烈影响歌词和叙事。
+              Suno 会直接使用这里的内容进行歌曲生成。对人声歌曲来说，这一段通常会强烈影响歌词和叙事。建议避免真实歌手名、艺人名、品牌名和其他敏感词，优先改写成虚构、抽象、中性的表达。
             </span>
           </label>
           <label className="full-span">
@@ -1330,7 +1330,7 @@ function LibraryPage(props: { songs: Song[]; onSuccess: () => Promise<void> }) {
           <SectionTitle
             eyebrow="Library"
             title="音乐库"
-            description="按歌名与封面查看歌曲。删除会同步移除对应任务记录。"
+            description="按歌名与封面查看歌曲。Suno 成功任务会按返回结果拆成两首歌分别入库；删除单首歌曲时，会尽量保留同任务下的另一首。"
           />
         </div>
         {deleteMessage ? <div className="inline-message">{deleteMessage}</div> : null}

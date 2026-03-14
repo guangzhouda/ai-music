@@ -10,7 +10,7 @@ import type {
 
 import { updateSnapshot } from "../lib/file-db.js";
 import { makeId, now, svgCoverDataUrl } from "../lib/utils.js";
-import type { SunoClient } from "../providers/suno-client.js";
+import type { SunoClient, SunoTaskDetails } from "../providers/suno-client.js";
 import type { VolcengineCoverClient } from "../providers/volcengine-client.js";
 import type { NovelService } from "./novel-service.js";
 
@@ -58,6 +58,31 @@ function createSongRecord(input: {
     durationSeconds: null,
     sourceDocumentId: input.sourceDocumentId ?? null,
     sourceExcerpt: input.sourceExcerpt ?? null,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  } satisfies Song;
+}
+
+function createSiblingSongRecord(
+  baseSong: Song,
+  taskId: string,
+  clip: NonNullable<SunoTaskDetails["clips"]>[number],
+  fallbackIndex: number
+) {
+  const timestamp = now();
+  const clipTitle = clip.title?.trim() || `${baseSong.title} · 版本 ${fallbackIndex + 1}`;
+
+  return {
+    ...baseSong,
+    id: makeId("song"),
+    title: clipTitle,
+    status: "ready",
+    taskId,
+    providerJobId: clip.clipId,
+    lyricsSnippet: clip.lyricsSnippet,
+    audioUrl: clip.audioUrl,
+    coverUrl: clip.coverUrl ?? baseSong.coverUrl,
+    durationSeconds: clip.durationSeconds,
     createdAt: timestamp,
     updatedAt: timestamp
   } satisfies Song;
@@ -221,7 +246,7 @@ export class TaskService {
     }
 
     const details = await this.sunoClient.getTaskDetails(task.providerTaskId, task.prompt);
-    if (details.errorMessage && ageMs(task.createdAt) >= EMPTY_DETAILS_TIMEOUT_MS) {
+    if (details.status !== "failed" && details.errorMessage && ageMs(task.createdAt) >= EMPTY_DETAILS_TIMEOUT_MS) {
       return this.applyTaskDetails(task.id, {
         ...details,
         status: "failed",
@@ -256,11 +281,51 @@ export class TaskService {
       throw new Error("Song not found");
     }
 
-    await updateSnapshot((current) => ({
-      ...current,
-      songs: current.songs.filter((entry) => entry.id !== songId),
-      tasks: current.tasks.filter((entry) => entry.songId !== songId)
-    }));
+    await updateSnapshot((current) => {
+      const relatedSongs = current.songs.filter((entry) => entry.taskId === song.taskId);
+      const currentTask = current.tasks.find((entry) => entry.id === song.taskId);
+      const remainingSongs = current.songs.filter((entry) => entry.id !== songId);
+
+      if (!currentTask) {
+        return {
+          ...current,
+          songs: remainingSongs
+        };
+      }
+
+      if (relatedSongs.length <= 1) {
+        return {
+          ...current,
+          songs: remainingSongs,
+          tasks: current.tasks.filter((entry) => entry.id !== currentTask.id)
+        };
+      }
+
+      if (currentTask.songId !== songId) {
+        return {
+          ...current,
+          songs: remainingSongs
+        };
+      }
+
+      const replacementSong = relatedSongs.find((entry) => entry.id !== songId);
+
+      return {
+        ...current,
+        songs: remainingSongs,
+        tasks: current.tasks.map((entry) =>
+          entry.id === currentTask.id && replacementSong
+            ? {
+                ...entry,
+                songId: replacementSong.id,
+                title: replacementSong.title,
+                prompt: replacementSong.prompt,
+                updatedAt: now()
+              }
+            : entry
+        )
+      };
+    });
 
     return {
       deleted: true,
@@ -344,9 +409,12 @@ export class TaskService {
     const snapshot = await this.getSnapshot();
     const staleTasks = snapshot.tasks.filter(
       (task) =>
-        (task.status === "queued" || task.status === "running") &&
-        Boolean(task.providerTaskId) &&
-        ageMs(task.updatedAt) >= EMPTY_DETAILS_TIMEOUT_MS
+        ((task.status === "queued" || task.status === "running") &&
+          Boolean(task.providerTaskId) &&
+          ageMs(task.updatedAt) >= EMPTY_DETAILS_TIMEOUT_MS) ||
+        (task.status === "succeeded" &&
+          Boolean(task.providerTaskId) &&
+          snapshot.songs.filter((song) => song.taskId === task.id).length < 2)
     );
 
     for (const task of staleTasks) {
@@ -388,6 +456,7 @@ export class TaskService {
       audioUrl: payload?.audioUrl ?? payload?.data?.audioUrl ?? null,
       lyricsSnippet: payload?.prompt ?? payload?.data?.prompt ?? task.prompt,
       durationSeconds: payload?.duration ?? payload?.data?.duration ?? null,
+      clips: [],
       raw: payload
     });
   }
@@ -428,6 +497,7 @@ export class TaskService {
       lyricsSnippet: string;
       durationSeconds: number | null;
       errorMessage?: string | null;
+      clips?: SunoTaskDetails["clips"];
     }
   ) {
     const snapshot = await this.getSnapshot();
@@ -437,31 +507,143 @@ export class TaskService {
       throw new Error("Task not found");
     }
 
-    await this.patchTask(taskId, (current) => ({
-      ...current,
-      status: details.status,
-      progressLabel:
-        details.status === "succeeded"
-          ? "歌曲已生成"
-          : details.status === "failed"
-            ? "歌曲生成失败"
-            : "Suno 处理中",
-      errorMessage: details.status === "failed" ? details.errorMessage ?? "Provider generation failed" : null,
-      updatedAt: now()
-    }));
-    await this.patchSong(task.songId, (current) => ({
-      ...current,
-      status:
-        details.status === "succeeded"
-          ? "ready"
-          : details.status === "failed"
-            ? "failed"
-            : "generating",
-      audioUrl: details.audioUrl,
-      lyricsSnippet: details.lyricsSnippet,
-      durationSeconds: details.durationSeconds,
-      updatedAt: now()
-    }));
+    const clipItems =
+      details.clips && details.clips.length > 0
+        ? details.clips
+        : [
+            {
+              clipId: task.providerTaskId ?? `${taskId}:clip-1`,
+              title: task.title,
+              audioUrl: details.audioUrl,
+              coverUrl: null,
+              lyricsSnippet: details.lyricsSnippet,
+              durationSeconds: details.durationSeconds,
+              raw: null
+            }
+          ];
+    const primaryClip = clipItems[0];
+
+    await updateSnapshot((current) => {
+      const currentTask = current.tasks.find((entry) => entry.id === taskId);
+      if (!currentTask) {
+        return current;
+      }
+
+      const currentSongs = current.songs.filter((entry) => entry.taskId === taskId);
+      const primarySong =
+        current.songs.find((entry) => entry.id === currentTask.songId) ?? currentSongs[0];
+
+      if (!primarySong) {
+        return current;
+      }
+
+      const timestamp = now();
+      const nextTasks = current.tasks.map((entry) =>
+        entry.id === taskId
+          ? {
+              ...entry,
+              title: primaryClip?.title?.trim() || entry.title,
+              status: details.status,
+              progressLabel:
+                details.status === "succeeded"
+                  ? "歌曲已生成"
+                  : details.status === "failed"
+                    ? "歌曲生成失败"
+                    : "Suno 处理中",
+              errorMessage:
+                details.status === "failed"
+                  ? details.errorMessage ?? "Provider generation failed"
+                  : null,
+              updatedAt: timestamp
+            }
+          : entry
+      );
+
+      const nextSongs = current.songs.map((entry) => {
+        if (entry.id !== primarySong.id) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          title: primaryClip?.title?.trim() || entry.title,
+          status:
+            details.status === "succeeded"
+              ? "ready"
+              : details.status === "failed"
+                ? "failed"
+                : "generating",
+          providerJobId: primaryClip?.clipId || entry.providerJobId,
+          audioUrl: primaryClip?.audioUrl ?? details.audioUrl,
+          coverUrl: primaryClip?.coverUrl ?? entry.coverUrl,
+          lyricsSnippet: primaryClip?.lyricsSnippet ?? details.lyricsSnippet,
+          durationSeconds: primaryClip?.durationSeconds ?? details.durationSeconds,
+          updatedAt: timestamp
+        };
+      });
+
+      if (details.status !== "succeeded" || clipItems.length <= 1) {
+        return {
+          ...current,
+          tasks: nextTasks,
+          songs: nextSongs
+        };
+      }
+
+      const songsWithVariants = [...nextSongs];
+
+      for (let index = 1; index < clipItems.length; index += 1) {
+        const clip = clipItems[index];
+        const clipKey = clip.clipId || `${currentTask.providerTaskId ?? taskId}:clip-${index + 1}`;
+        const existingSongIndex = songsWithVariants.findIndex(
+          (entry) => entry.taskId === taskId && entry.id !== primarySong.id && entry.providerJobId === clipKey
+        );
+
+        if (existingSongIndex >= 0) {
+          const existingSong = songsWithVariants[existingSongIndex];
+          songsWithVariants[existingSongIndex] = {
+            ...existingSong,
+            title: clip.title?.trim() || existingSong.title,
+            status: "ready",
+            providerJobId: clipKey,
+            audioUrl: clip.audioUrl,
+            coverUrl: clip.coverUrl ?? existingSong.coverUrl,
+            lyricsSnippet: clip.lyricsSnippet,
+            durationSeconds: clip.durationSeconds,
+            updatedAt: timestamp
+          };
+          continue;
+        }
+
+        songsWithVariants.push(
+          createSiblingSongRecord(
+            {
+              ...primarySong,
+              title: primaryClip?.title?.trim() || primarySong.title,
+              providerJobId: primaryClip?.clipId || primarySong.providerJobId,
+              audioUrl: primaryClip?.audioUrl ?? details.audioUrl,
+              coverUrl: primaryClip?.coverUrl ?? primarySong.coverUrl,
+              lyricsSnippet: primaryClip?.lyricsSnippet ?? details.lyricsSnippet,
+              durationSeconds: primaryClip?.durationSeconds ?? details.durationSeconds,
+              status: "ready",
+              updatedAt: timestamp
+            },
+            taskId,
+            {
+              ...clip,
+              clipId: clipKey
+            },
+            index
+          )
+        );
+      }
+
+      return {
+        ...current,
+        tasks: nextTasks,
+        songs: songsWithVariants
+      };
+    });
 
     return this.getSongSnapshot(task.songId);
   }
