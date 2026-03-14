@@ -8,6 +8,7 @@ import type {
   GenreRule,
   LibrarySnapshot,
   NovelDocument,
+  NovelPromptDraft,
   Song,
   SongTask,
   SunoModel,
@@ -74,11 +75,22 @@ function toReadableErrorMessage(value: unknown) {
     return value.message;
   }
 
+  if (Array.isArray(value) && value.length > 0) {
+    return toReadableErrorMessage(value[0]);
+  }
+
   if (typeof value === "string") {
     return value;
   }
 
   if (value && typeof value === "object") {
+    if ("message" in value && typeof value.message === "string") {
+      return value.message;
+    }
+    if ("error" in value && typeof value.error === "string") {
+      return value.error;
+    }
+
     try {
       return JSON.stringify(value);
     } catch {
@@ -587,8 +599,11 @@ function QuickCreatePage(props: { onSuccess: () => Promise<void>; rules: GenreRu
               </select>
             </label>
             <label className="full-span">
-              简短描述
+              提交给 Suno 的歌词/内容提示词
               <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
+              <span className="field-hint">
+                这里的内容会直接提交给 Suno。人声歌曲场景下，它通常会同时影响歌词、叙事和旋律走向。
+              </span>
             </label>
             <label className="full-span">
               风格补充
@@ -688,6 +703,28 @@ function NovelStudioPage(props: {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [importMessage, setImportMessage] = useState("");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftPrompt, setDraftPrompt] = useState("");
+  const [draftStylePrompt, setDraftStylePrompt] = useState("");
+  const [draftSignature, setDraftSignature] = useState("");
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftMessage, setDraftMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const activeDocument = props.documents.find((document) => document.id === documentId) ?? null;
+  const currentStylePrompt = buildStyleText(props.rules, styleRuleSlug, customStyleNotes);
+  const currentDraftSignature = JSON.stringify({
+    documentId,
+    mode,
+    focus,
+    stylePrompt: currentStylePrompt,
+    makeInstrumental,
+    model,
+    negativeTags,
+    vocalGender,
+    excerpt
+  });
+  const draftStale = Boolean(draftSignature) && draftSignature !== currentDraftSignature;
 
   useEffect(() => {
     if (!props.documents.length) {
@@ -720,6 +757,10 @@ function NovelStudioPage(props: {
       });
       setDocumentId(document.id);
       setText("");
+      setDraftSignature("");
+      setDraftTitle("");
+      setDraftPrompt("");
+      setDraftStylePrompt("");
       await props.onSuccess();
       setImportMessage(`已导入文本：${document.title}`);
     } catch (error) {
@@ -754,6 +795,10 @@ function NovelStudioPage(props: {
       setDocumentId(document.id);
       setSelectedFile(null);
       setFileInputKey((current) => current + 1);
+      setDraftSignature("");
+      setDraftTitle("");
+      setDraftPrompt("");
+      setDraftStylePrompt("");
       await props.onSuccess();
       setImportMessage(`已导入文件：${document.title}`);
     } catch (error) {
@@ -763,30 +808,75 @@ function NovelStudioPage(props: {
     }
   }
 
-  async function generateNovelSong() {
+  async function generateDraft() {
     if (!documentId) {
       return;
     }
 
-    await fetchJson("/api/generate/novel", {
-      method: "POST",
-      body: JSON.stringify({
-        documentId,
-        mode,
-        focus,
-        stylePrompt: buildStyleText(props.rules, styleRuleSlug, customStyleNotes),
-        makeInstrumental,
-        model,
-        negativeTags,
-        vocalGender,
-        excerpt
-      })
-    });
-    await props.onSuccess();
+    setDraftLoading(true);
+    setDraftMessage("");
+    try {
+      const draft = await fetchJson<NovelPromptDraft>("/api/generate/novel/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          documentId,
+          mode,
+          focus,
+          stylePrompt: currentStylePrompt,
+          makeInstrumental,
+          model,
+          negativeTags,
+          vocalGender,
+          excerpt
+        })
+      });
+      setDraftTitle(draft.title);
+      setDraftPrompt(draft.prompt);
+      setDraftStylePrompt(draft.stylePrompt);
+      setDraftSignature(currentDraftSignature);
+      setDraftMessage("提示词草稿已生成。你可以继续修改后再提交到 Suno。");
+    } catch (error) {
+      setDraftMessage(toReadableErrorMessage(error));
+    } finally {
+      setDraftLoading(false);
+    }
+  }
+
+  async function generateNovelSong() {
+    if (!documentId || !draftPrompt.trim()) {
+      return;
+    }
+
+    setSubmitting(true);
+    setDraftMessage("");
+    try {
+      await fetchJson("/api/generate/novel", {
+        method: "POST",
+        body: JSON.stringify({
+          documentId,
+          mode,
+          focus,
+          stylePrompt: draftStylePrompt.trim() || currentStylePrompt,
+          makeInstrumental,
+          model,
+          negativeTags,
+          vocalGender,
+          excerpt,
+          title: draftTitle.trim(),
+          prompt: draftPrompt.trim()
+        })
+      });
+      await props.onSuccess();
+      setDraftMessage("歌曲任务已提交到 Suno。");
+    } catch (error) {
+      setDraftMessage(toReadableErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <div className="two-column novel-page">
+    <div className="single-column novel-page">
       <Panel>
         <SectionTitle
           eyebrow="Import"
@@ -837,10 +927,10 @@ function NovelStudioPage(props: {
         <div className="imported-docs">
           <strong>已导入文档</strong>
           {props.documents.length === 0 ? (
-            <p className="import-note">当前还没有文档。导入后会自动选中最新文档用于右侧生成。</p>
+            <p className="import-note">当前还没有文档。导入后会自动选中最新文档用于下方生成。</p>
           ) : (
-            <div className="stack-list compact-scroll">
-              {props.documents.slice(0, 3).map((document) => (
+            <div className="stack-list compact-scroll imported-doc-list">
+              {props.documents.map((document) => (
                 <button
                   key={document.id}
                   className={cx("doc-pick", documentId === document.id && "doc-pick-active")}
@@ -848,7 +938,7 @@ function NovelStudioPage(props: {
                   type="button"
                 >
                   <span>{document.title}</span>
-                  <small>{document.chunks.length} chunks</small>
+                  <small>{document.chunks.length} chunks · {document.characters.slice(0, 3).join("、") || "待分析"}</small>
                 </button>
               ))}
             </div>
@@ -860,7 +950,7 @@ function NovelStudioPage(props: {
         <SectionTitle
           eyebrow="Generate"
           title="小说成歌"
-          description="将全文、节选、角色或场景整理成结构化歌曲提示词。"
+          description="先根据全文和节选生成 Suno 提示词草稿，再手动修改后提交。"
         />
         <div className="card-grid compact">
           {[
@@ -975,14 +1065,65 @@ function NovelStudioPage(props: {
             />
           </label>
         </div>
-        <button
-          className="primary-button"
-          disabled={!documentId}
-          onClick={() => void generateNovelSong()}
-          type="button"
-        >
-          生成歌曲任务
-        </button>
+        {activeDocument ? (
+          <div className="selected-doc-summary">
+            <strong>{activeDocument.title}</strong>
+            <p>{activeDocument.summary}</p>
+          </div>
+        ) : null}
+        <div className="form-actions">
+          <button
+            className="ghost-button"
+            disabled={!documentId || draftLoading}
+            onClick={() => void generateDraft()}
+            type="button"
+          >
+            {draftLoading ? "生成草稿中..." : "先生成提示词草稿"}
+          </button>
+          <button
+            className="primary-button"
+            disabled={!documentId || !draftPrompt.trim() || draftStale || submitting}
+            onClick={() => void generateNovelSong()}
+            type="button"
+          >
+            {submitting ? "提交中..." : "提交到 Suno"}
+          </button>
+        </div>
+        {draftStale ? (
+          <div className="inline-message">参数已变更，请先重新生成提示词草稿，再提交到 Suno。</div>
+        ) : null}
+        {draftMessage ? <div className="inline-message">{draftMessage}</div> : null}
+        <div className="form-grid prompt-review-grid">
+          <label className="full-span">
+            最终歌名
+            <input
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              placeholder="先点击“生成提示词草稿”"
+            />
+          </label>
+          <label className="full-span">
+            最终提交给 Suno 的歌词/内容提示词
+            <textarea
+              value={draftPrompt}
+              rows={10}
+              onChange={(event) => setDraftPrompt(event.target.value)}
+              placeholder="这里会显示 AI 基于全文生成的歌词/内容提示词，你可以直接修改。"
+            />
+            <span className="field-hint">
+              Suno 会直接使用这里的内容进行歌曲生成。对人声歌曲来说，这一段通常会强烈影响歌词和叙事。
+            </span>
+          </label>
+          <label className="full-span">
+            最终提交给 Suno 的风格提示词
+            <textarea
+              value={draftStylePrompt}
+              rows={4}
+              onChange={(event) => setDraftStylePrompt(event.target.value)}
+              placeholder="这里会显示最终风格文本。"
+            />
+          </label>
+        </div>
       </Panel>
     </div>
   );
@@ -1353,12 +1494,54 @@ function PlayerOverlay(props: { song: Song; onClose: () => void }) {
 
 function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<void> }) {
   const sortedTasks = [...props.tasks].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+  const [taskMessage, setTaskMessage] = useState("");
+  const [busyTaskIds, setBusyTaskIds] = useState<string[]>([]);
 
   async function refreshTask(taskId: string) {
-    await fetchJson(`/api/tasks/${taskId}/refresh`, {
-      method: "POST"
-    });
-    await props.onSuccess();
+    setBusyTaskIds((current) => [...current, taskId]);
+    setTaskMessage("");
+    try {
+      await fetchJson(`/api/tasks/${taskId}/refresh`, {
+        method: "POST"
+      });
+      await props.onSuccess();
+    } catch (error) {
+      setTaskMessage(toReadableErrorMessage(error));
+    } finally {
+      setBusyTaskIds((current) => current.filter((id) => id !== taskId));
+    }
+  }
+
+  async function retryTask(taskId: string) {
+    setBusyTaskIds((current) => [...current, taskId]);
+    setTaskMessage("");
+    try {
+      await fetchJson(`/api/tasks/${taskId}/retry`, {
+        method: "POST"
+      });
+      await props.onSuccess();
+      setTaskMessage("已基于失败任务重新创建新的歌曲任务。");
+    } catch (error) {
+      setTaskMessage(toReadableErrorMessage(error));
+    } finally {
+      setBusyTaskIds((current) => current.filter((id) => id !== taskId));
+    }
+  }
+
+  async function deleteFailedTask(taskId: string) {
+    setBusyTaskIds((current) => [...current, taskId]);
+    setTaskMessage("");
+    try {
+      await fetchJson(`/api/tasks/${taskId}`, {
+        method: "DELETE"
+      });
+      await props.onSuccess();
+      setTaskMessage("失败任务已删除。");
+    } catch (error) {
+      setTaskMessage(toReadableErrorMessage(error));
+    } finally {
+      setBusyTaskIds((current) => current.filter((id) => id !== taskId));
+    }
   }
 
   return (
@@ -1368,7 +1551,7 @@ function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<void> })
           <SectionTitle
             eyebrow="Tasks"
             title="任务中心"
-            description="所有歌曲生成都会进入统一状态机。queued 表示任务已提交给 provider，但还在排队等待开始生成。"
+            description="所有歌曲生成都会进入统一状态机。排队中表示任务已提交给 provider，但还在等待开始生成。"
           />
         </div>
         <div className="task-summary">
@@ -1382,6 +1565,7 @@ function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<void> })
             value={String(sortedTasks.filter((task) => task.status === "queued" || task.status === "running").length)}
           />
         </div>
+        {taskMessage ? <div className="inline-message">{taskMessage}</div> : null}
         <div className="task-list-page">
           {sortedTasks.length === 0 ? (
             <EmptyState text="当前没有任务。" />
@@ -1398,9 +1582,34 @@ function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<void> })
                   <Tag tone={task.status === "succeeded" ? "success" : "default"}>
                     {taskStatusLabel(task.status)}
                   </Tag>
-                  <button className="ghost-button" onClick={() => void refreshTask(task.id)} type="button">
+                  <button
+                    className="ghost-button"
+                    disabled={busyTaskIds.includes(task.id)}
+                    onClick={() => void refreshTask(task.id)}
+                    type="button"
+                  >
                     查询状态
                   </button>
+                  {task.status === "failed" ? (
+                    <>
+                      <button
+                        className="ghost-button"
+                        disabled={busyTaskIds.includes(task.id)}
+                        onClick={() => void retryTask(task.id)}
+                        type="button"
+                      >
+                        重试任务
+                      </button>
+                      <button
+                        className="ghost-button"
+                        disabled={busyTaskIds.includes(task.id)}
+                        onClick={() => void deleteFailedTask(task.id)}
+                        type="button"
+                      >
+                        删除失败任务
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </article>
             ))
@@ -1503,6 +1712,8 @@ function SettingsPage(_props: { onSaved: () => Promise<void> }) {
     setSettings((current) => (current ? { ...current, [key]: value } : current));
   }
 
+  const callbackEnabled = Boolean(settings?.sunoCallbackUrl.trim());
+
   async function saveSettings() {
     if (!settings) {
       return;
@@ -1583,6 +1794,33 @@ function SettingsPage(_props: { onSaved: () => Promise<void> }) {
             title="音乐生成接口"
             description="用于一键成歌、小说成歌、余额查询和任务状态同步。"
           />
+          <div className="callback-card">
+            <span className="toggle-label">Callback 回调</span>
+            <div className="switch-row settings-mode-switch">
+              <button
+                className={cx("toggle-chip", !callbackEnabled && "toggle-chip-active")}
+                onClick={() => patchSetting("sunoCallbackUrl", "")}
+                type="button"
+              >
+                已关闭
+              </button>
+              <button
+                className={cx("toggle-chip", callbackEnabled && "toggle-chip-active")}
+                onClick={() =>
+                  patchSetting(
+                    "sunoCallbackUrl",
+                    settings.sunoCallbackUrl || "https://your-public-domain/api/providers/suno/callback"
+                  )
+                }
+                type="button"
+              >
+                启用公网回调
+              </button>
+            </div>
+            <span className="field-hint">
+              本地开发建议关闭。只有公网可访问地址才适合填在这里，`localhost` 不会被 Suno 外部服务回调到。
+            </span>
+          </div>
           <div className="form-grid">
             <label className="full-span">
               API Key
@@ -1603,8 +1841,10 @@ function SettingsPage(_props: { onSaved: () => Promise<void> }) {
             <label>
               Callback URL
               <input
+                disabled={!callbackEnabled}
                 value={settings.sunoCallbackUrl}
                 onChange={(event) => patchSetting("sunoCallbackUrl", event.target.value)}
+                placeholder="https://your-public-domain/api/providers/suno/callback"
               />
             </label>
             <label>

@@ -13,7 +13,7 @@ const defaultAccount: AccountInfo = {
   provider: "sunoapi",
   mode: "mock",
   creditsRemaining: 0,
-  callbackConfigured: true,
+  callbackConfigured: false,
   lastCheckedAt: null
 };
 
@@ -47,7 +47,14 @@ export async function readSnapshot() {
     account: {
       ...defaultAccount,
       ...parsed.account
-    }
+    },
+    songs: (parsed.songs ?? []).map((song) => ({
+      ...song,
+      makeInstrumental: song.makeInstrumental ?? false,
+      model: song.model ?? "V4_5ALL",
+      negativeTags: song.negativeTags ?? "",
+      vocalGender: song.vocalGender ?? ""
+    }))
   } satisfies LibrarySnapshot;
 }
 
@@ -64,4 +71,3 @@ export async function updateSnapshot(
   await writeSnapshot(next);
   return next;
 }
-

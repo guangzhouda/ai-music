@@ -1,4 +1,4 @@
-import type { NovelCreateInput, NovelDocument } from "@ai-music/types";
+import type { NovelCreateInput, NovelDocument, NovelPromptDraft } from "@ai-music/types";
 
 import { genreRules } from "@ai-music/config";
 
@@ -42,7 +42,7 @@ export class NovelService {
     return document;
   }
 
-  async composeNovelPrompt(document: NovelDocument, input: NovelCreateInput) {
+  async previewNovelSong(document: NovelDocument, input: NovelCreateInput): Promise<NovelPromptDraft> {
     const related = retrieveRelevant(document.chunks, `${input.focus}\n${input.excerpt ?? ""}`, 3)
       .map((item) => item.text)
       .join("\n");
@@ -61,5 +61,15 @@ export class NovelService {
         styleText
       })
       .catch(() => buildFallbackSongPlan(document, input, related, styleText));
+  }
+
+  async composeNovelPrompt(document: NovelDocument, input: NovelCreateInput) {
+    const draft = await this.previewNovelSong(document, input);
+
+    return {
+      title: input.title?.trim() || draft.title,
+      prompt: input.prompt?.trim() || draft.prompt,
+      stylePrompt: input.stylePrompt.trim() || draft.stylePrompt
+    };
   }
 }

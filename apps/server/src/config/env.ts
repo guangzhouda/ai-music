@@ -25,8 +25,7 @@ export const env = {
   sunoGeneratePath: process.env.SUNO_GENERATE_PATH ?? "/api/v1/generate",
   sunoDetailsPath: process.env.SUNO_DETAILS_PATH ?? "/api/v1/generate/record-info",
   sunoCreditsPath: process.env.SUNO_CREDITS_PATH ?? "/api/v1/generate/credit",
-  sunoCallbackUrl:
-    process.env.SUNO_CALLBACK_URL ?? "http://localhost:8787/api/providers/suno/callback",
+  sunoCallbackUrl: process.env.SUNO_CALLBACK_URL ?? "",
   volcengineAccessKey: process.env.VOLCENGINE_ACCESS_KEY ?? "",
   volcengineSecretKey: process.env.VOLCENGINE_SECRET_KEY ?? "",
   volcengineRegion: process.env.VOLCENGINE_REGION ?? "cn-north-1",

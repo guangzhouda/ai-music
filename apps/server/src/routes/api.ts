@@ -34,7 +34,9 @@ const novelCreateSchema = z.object({
   model: z.enum(["V4", "V4_5", "V4_5PLUS", "V4_5ALL", "V5"]).default("V4_5ALL"),
   negativeTags: z.string().optional(),
   vocalGender: z.enum(["", "m", "f"]).default(""),
-  excerpt: z.string().optional()
+  excerpt: z.string().optional(),
+  title: z.string().min(1).optional(),
+  prompt: z.string().min(6).optional()
 });
 
 const coverSchema = z.object({
@@ -49,7 +51,7 @@ const settingsSchema = z.object({
   sunoGeneratePath: z.string().min(1),
   sunoDetailsPath: z.string().min(1),
   sunoCreditsPath: z.string().min(1),
-  sunoCallbackUrl: z.string().url(),
+  sunoCallbackUrl: z.union([z.literal(""), z.string().url()]),
   deepseekApiKey: z.string(),
   deepseekBaseUrl: z.string().url(),
   deepseekModel: z.string().min(1),
@@ -124,7 +126,7 @@ export async function registerApiRoutes(
         }
       };
     } catch (error) {
-      reply.code(500);
+      reply.code(error instanceof Error ? 400 : 500);
       return {
         error: error instanceof Error ? error.message : "File import failed"
       };
@@ -145,6 +147,18 @@ export async function registerApiRoutes(
     return song;
   });
 
+  app.post("/api/generate/novel/preview", async (request) => {
+    const input = novelCreateSchema.omit({ title: true, prompt: true }).parse(request.body);
+    const snapshot = await taskService.getSnapshot();
+    const document = snapshot.documents.find((item) => item.id === input.documentId);
+
+    if (!document) {
+      throw new Error("Novel document not found");
+    }
+
+    return novelService.previewNovelSong(document, input);
+  });
+
   app.post("/api/covers", async (request, reply) => {
     const input = coverSchema.parse(request.body);
     const result = await taskService.createCover(input);
@@ -162,9 +176,21 @@ export async function registerApiRoutes(
     return taskService.deleteSong(params.songId);
   });
 
+  app.delete("/api/tasks/:taskId", async (request) => {
+    const params = z.object({ taskId: z.string().min(1) }).parse(request.params);
+    return taskService.deleteFailedTask(params.taskId);
+  });
+
   app.post("/api/tasks/:taskId/refresh", async (request) => {
     const params = z.object({ taskId: z.string().min(1) }).parse(request.params);
     return taskService.refreshTask(params.taskId);
+  });
+
+  app.post("/api/tasks/:taskId/retry", async (request, reply) => {
+    const params = z.object({ taskId: z.string().min(1) }).parse(request.params);
+    const song = await taskService.retryTask(params.taskId);
+    reply.code(201);
+    return song;
   });
 
   app.post("/api/providers/suno/callback", async (request, reply) => {

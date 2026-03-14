@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import { ZodError } from "zod";
 
 import { env } from "./config/env.js";
 import { DeepSeekClient } from "./providers/deepseek-client.js";
@@ -37,6 +38,38 @@ export async function buildServer() {
       fileSize: 20 * 1024 * 1024,
       files: 1
     }
+  });
+
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof ZodError) {
+      const issue = error.issues[0];
+      const path = issue?.path.join(".") || "请求参数";
+      let message = issue?.message ?? "请求参数不合法";
+
+      if (issue?.code === "too_small" && issue.path[0] === "text") {
+        message = "正文太短，至少需要 20 个字符。";
+      } else if (issue?.code === "too_small" && issue.path[0] === "prompt") {
+        message = "提示词太短，请至少填写 6 个字符。";
+      } else if (issue?.code === "invalid_type") {
+        message = `${path} 的格式不正确。`;
+      }
+
+      reply.code(400).send({
+        error: message,
+        field: path
+      });
+      return;
+    }
+
+    const statusCode =
+      typeof (error as { statusCode?: unknown }).statusCode === "number" &&
+      (error as { statusCode?: number }).statusCode! >= 400
+        ? (error as { statusCode?: number }).statusCode!
+        : 500;
+
+    reply.code(statusCode).send({
+      error: error instanceof Error ? error.message : "服务器内部错误"
+    });
   });
 
   const sunoClient = new SunoClient(env);

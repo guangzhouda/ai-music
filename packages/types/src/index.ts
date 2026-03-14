@@ -50,6 +50,10 @@ export interface Song {
   providerJobId: string | null;
   prompt: string;
   stylePrompt: string;
+  makeInstrumental: boolean;
+  model: SunoModel;
+  negativeTags: string;
+  vocalGender: VocalGender;
   lyricsSnippet: string;
   tags: string[];
   audioUrl: string | null;
@@ -118,6 +122,14 @@ export interface NovelCreateInput {
   negativeTags?: string;
   vocalGender?: VocalGender;
   excerpt?: string;
+  title?: string;
+  prompt?: string;
+}
+
+export interface NovelPromptDraft {
+  title: string;
+  prompt: string;
+  stylePrompt: string;
 }
 
 export interface CoverCreateInput {

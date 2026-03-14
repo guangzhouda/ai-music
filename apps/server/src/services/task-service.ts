@@ -4,7 +4,8 @@ import type {
   NovelCreateInput,
   QuickCreateInput,
   Song,
-  SongTask
+  SongTask,
+  SunoGenerationOptions
 } from "@ai-music/types";
 
 import { updateSnapshot } from "../lib/file-db.js";
@@ -25,6 +26,10 @@ function createSongRecord(input: {
   prompt: string;
   stylePrompt: string;
   mode: Song["mode"];
+  makeInstrumental: boolean;
+  model: SunoGenerationOptions["model"];
+  negativeTags?: string;
+  vocalGender?: SunoGenerationOptions["vocalGender"];
   sourceDocumentId?: string | null;
   sourceExcerpt?: string | null;
 }) {
@@ -36,10 +41,17 @@ function createSongRecord(input: {
     status: "generating",
     taskId: "",
     providerJobId: null,
-      prompt: input.prompt,
-      stylePrompt: input.stylePrompt,
-      lyricsSnippet: "",
-      tags: input.stylePrompt.split(/[、,]/).map((item) => item.trim()).filter(Boolean),
+    prompt: input.prompt,
+    stylePrompt: input.stylePrompt,
+    makeInstrumental: input.makeInstrumental,
+    model: input.model,
+    negativeTags: input.negativeTags?.trim() ?? "",
+    vocalGender: input.vocalGender ?? "",
+    lyricsSnippet: "",
+    tags: input.stylePrompt
+      .split(/[、,]/)
+      .map((item) => item.trim())
+      .filter(Boolean),
     audioUrl: null,
     coverUrl: svgCoverDataUrl(input.title),
     coverStatus: "idle",
@@ -97,7 +109,11 @@ export class TaskService {
       title: input.title,
       prompt: input.prompt,
       stylePrompt: input.stylePrompt,
-      mode: "quick"
+      mode: "quick",
+      makeInstrumental: input.makeInstrumental,
+      model: input.model,
+      negativeTags: input.negativeTags,
+      vocalGender: input.vocalGender
     });
     const task = createTaskRecord(song);
     song.taskId = task.id;
@@ -108,26 +124,7 @@ export class TaskService {
       tasks: [task, ...snapshot.tasks]
     }));
 
-    try {
-      const providerTask = await this.sunoClient.createMusic(this.sunoClient.buildQuickPayload(input));
-
-      await this.patchTask(task.id, (current) => ({
-        ...current,
-        providerTaskId: providerTask.providerTaskId,
-        status: "running",
-        progressLabel: "Suno 已接受任务，等待生成",
-        updatedAt: now()
-      }));
-      await this.patchSong(song.id, (current) => ({
-        ...current,
-        providerJobId: providerTask.providerTaskId,
-        updatedAt: now()
-      }));
-
-      void this.finishSong(task.id);
-    } catch (error) {
-      await this.failTask(task.id, song.id, error);
-    }
+    await this.submitSong(task.id, song.id, this.sunoClient.buildQuickPayload(input));
 
     return this.getSongSnapshot(song.id);
   }
@@ -146,6 +143,10 @@ export class TaskService {
       prompt: composed.prompt,
       stylePrompt: composed.stylePrompt,
       mode: input.mode,
+      makeInstrumental: input.makeInstrumental,
+      model: input.model,
+      negativeTags: input.negativeTags,
+      vocalGender: input.vocalGender,
       sourceDocumentId: document.id,
       sourceExcerpt: input.excerpt ?? null
     });
@@ -158,35 +159,16 @@ export class TaskService {
       tasks: [task, ...current.tasks]
     }));
 
-    try {
-      const providerTask = await this.sunoClient.createMusic({
-        title: song.title,
-        prompt: song.prompt,
-        stylePrompt: song.stylePrompt,
-        mode: song.mode,
-        makeInstrumental: input.makeInstrumental,
-        model: input.model,
-        negativeTags: input.negativeTags,
-        vocalGender: input.vocalGender
-      });
-
-      await this.patchTask(task.id, (current) => ({
-        ...current,
-        providerTaskId: providerTask.providerTaskId,
-        status: "running",
-        progressLabel: "小说素材已提交到 Suno",
-        updatedAt: now()
-      }));
-      await this.patchSong(song.id, (current) => ({
-        ...current,
-        providerJobId: providerTask.providerTaskId,
-        updatedAt: now()
-      }));
-
-      void this.finishSong(task.id);
-    } catch (error) {
-      await this.failTask(task.id, song.id, error);
-    }
+    await this.submitSong(task.id, song.id, {
+      title: song.title,
+      prompt: song.prompt,
+      stylePrompt: song.stylePrompt,
+      mode: song.mode,
+      makeInstrumental: input.makeInstrumental,
+      model: input.model,
+      negativeTags: input.negativeTags,
+      vocalGender: input.vocalGender
+    });
 
     return this.getSongSnapshot(song.id);
   }
@@ -286,6 +268,78 @@ export class TaskService {
     };
   }
 
+  async deleteFailedTask(taskId: string) {
+    const snapshot = await this.getSnapshot();
+    const task = snapshot.tasks.find((entry) => entry.id === taskId);
+
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    if (task.status !== "failed") {
+      throw new Error("Only failed tasks can be deleted");
+    }
+
+    await updateSnapshot((current) => ({
+      ...current,
+      tasks: current.tasks.filter((entry) => entry.id !== taskId),
+      songs: current.songs.filter((entry) => entry.id !== task.songId)
+    }));
+
+    return {
+      deleted: true,
+      taskId
+    };
+  }
+
+  async retryTask(taskId: string) {
+    const snapshot = await this.getSnapshot();
+    const task = snapshot.tasks.find((entry) => entry.id === taskId);
+    const sourceSong = snapshot.songs.find((entry) => entry.id === task?.songId);
+
+    if (!task || !sourceSong) {
+      throw new Error("Task not found");
+    }
+
+    if (task.status !== "failed") {
+      throw new Error("Only failed tasks can be retried");
+    }
+
+    const song = createSongRecord({
+      title: sourceSong.title,
+      prompt: sourceSong.prompt,
+      stylePrompt: sourceSong.stylePrompt,
+      mode: sourceSong.mode,
+      makeInstrumental: sourceSong.makeInstrumental,
+      model: sourceSong.model,
+      negativeTags: sourceSong.negativeTags,
+      vocalGender: sourceSong.vocalGender,
+      sourceDocumentId: sourceSong.sourceDocumentId,
+      sourceExcerpt: sourceSong.sourceExcerpt
+    });
+    const nextTask = createTaskRecord(song);
+    song.taskId = nextTask.id;
+
+    await updateSnapshot((current) => ({
+      ...current,
+      songs: [song, ...current.songs],
+      tasks: [nextTask, ...current.tasks]
+    }));
+
+    await this.submitSong(nextTask.id, song.id, {
+      title: song.title,
+      prompt: song.prompt,
+      stylePrompt: song.stylePrompt,
+      mode: song.mode,
+      makeInstrumental: song.makeInstrumental,
+      model: song.model,
+      negativeTags: song.negativeTags,
+      vocalGender: song.vocalGender
+    });
+
+    return this.getSongSnapshot(song.id);
+  }
+
   async reconcileStaleTasks() {
     const snapshot = await this.getSnapshot();
     const staleTasks = snapshot.tasks.filter(
@@ -341,6 +395,29 @@ export class TaskService {
   private async finishSong(taskId: string) {
     await new Promise((resolve) => setTimeout(resolve, 1200));
     await this.refreshTask(taskId);
+  }
+
+  private async submitSong(taskId: string, songId: string, payload: Parameters<SunoClient["createMusic"]>[0]) {
+    try {
+      const providerTask = await this.sunoClient.createMusic(payload);
+
+      await this.patchTask(taskId, (current) => ({
+        ...current,
+        providerTaskId: providerTask.providerTaskId,
+        status: "running",
+        progressLabel: "Suno 已接受任务，等待生成",
+        updatedAt: now()
+      }));
+      await this.patchSong(songId, (current) => ({
+        ...current,
+        providerJobId: providerTask.providerTaskId,
+        updatedAt: now()
+      }));
+
+      void this.finishSong(taskId);
+    } catch (error) {
+      await this.failTask(taskId, songId, error);
+    }
   }
 
   private async applyTaskDetails(
