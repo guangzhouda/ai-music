@@ -132,6 +132,25 @@ export interface NovelPromptDraft {
   stylePrompt: string;
 }
 
+export type PromptAssetKey =
+  | "document-analysis"
+  | "segment-analysis"
+  | "summary-merge"
+  | "novel-song-plan";
+
+export interface PromptAssetEntry {
+  key: PromptAssetKey;
+  title: string;
+  description: string;
+  targetModel: "deepseek";
+  systemPrompt: string;
+}
+
+export interface PromptAssetLibrary {
+  updatedAt: string | null;
+  assets: PromptAssetEntry[];
+}
+
 export interface CoverCreateInput {
   songId: string;
   prompt: string;

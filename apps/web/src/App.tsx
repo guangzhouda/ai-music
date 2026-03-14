@@ -9,6 +9,7 @@ import type {
   LibrarySnapshot,
   NovelDocument,
   NovelPromptDraft,
+  PromptAssetLibrary,
   Song,
   SongTask,
   SunoModel,
@@ -170,6 +171,11 @@ const emptyOverview: LibrarySnapshot = {
   rules: []
 };
 
+const emptyPromptAssets: PromptAssetLibrary = {
+  updatedAt: null,
+  assets: []
+};
+
 const taskStatusTextMap: Record<SongTask["status"], string> = {
   queued: "排队中",
   running: "处理中",
@@ -259,6 +265,7 @@ function App() {
             ["/tasks", "任务"],
             ["/account", "账户"],
             ["/settings", "设置"],
+            ["/assets", "资产库"],
             ["/docs", "文档"]
           ].map(([path, label]) => (
             <NavLink
@@ -328,6 +335,7 @@ function App() {
             }
           />
           <Route path="/settings" element={<SettingsPage onSaved={refreshOverview} />} />
+          <Route path="/assets" element={<AssetLibraryPage />} />
           <Route path="/docs" element={<DocsPage />} />
         </Routes>
       </main>
@@ -522,6 +530,115 @@ function DocsPage() {
           ))}
         </div>
       </Panel>
+    </div>
+  );
+}
+
+function AssetLibraryPage() {
+  const [library, setLibrary] = useState<PromptAssetLibrary>(emptyPromptAssets);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAssets() {
+      try {
+        const result = await fetchJson<PromptAssetLibrary>("/api/prompt-assets");
+        if (!cancelled) {
+          setLibrary(result);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessage(toReadableErrorMessage(error));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadAssets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function patchAsset(key: PromptAssetLibrary["assets"][number]["key"], systemPrompt: string) {
+    setLibrary((current) => ({
+      ...current,
+      assets: current.assets.map((asset) => (asset.key === key ? { ...asset, systemPrompt } : asset))
+    }));
+  }
+
+  async function saveAssets() {
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const result = await fetchJson<PromptAssetLibrary>("/api/prompt-assets", {
+        method: "PUT",
+        body: JSON.stringify(library)
+      });
+      setLibrary(result);
+      setMessage("资产库已保存。后续 DeepSeek 摘要、角色提取和小说成歌都会使用这里的系统提示词。");
+    } catch (error) {
+      setMessage(toReadableErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="single-column asset-page">
+      <Panel>
+        <SectionTitle
+          eyebrow="Assets"
+          title="提示词资产库"
+          description="这里维护所有会发给 DeepSeek 的系统提示词。它们不会直接发给 Suno，但会影响摘要、角色提取、小说成歌提示词草稿和最终歌词内容。"
+        />
+        <div className="settings-toolbar">
+          <div className="runtime-mode-card">
+            <span className="toggle-label">当前用途</span>
+            <span className="field-hint">
+              导入全文时的摘要、长文分段分析、全文汇总、小说成歌草稿生成，都会使用下面这些大模型系统提示词。
+            </span>
+          </div>
+          <button className="primary-button" disabled={loading || saving} onClick={() => void saveAssets()} type="button">
+            {saving ? "保存中..." : "保存资产"}
+          </button>
+        </div>
+        {message ? <div className="inline-message">{message}</div> : null}
+      </Panel>
+
+      <div className="asset-grid">
+        {library.assets.map((asset) => (
+          <Panel key={asset.key}>
+            <div className="asset-card-header">
+              <div>
+                <Tag tone="accent">{asset.targetModel}</Tag>
+                <h3>{asset.title}</h3>
+              </div>
+              <span className="asset-key">{asset.key}</span>
+            </div>
+            <p className="asset-description">{asset.description}</p>
+            <label className="asset-label">
+              系统提示词
+              <textarea
+                rows={10}
+                value={asset.systemPrompt}
+                onChange={(event) => patchAsset(asset.key, event.target.value)}
+              />
+            </label>
+            <p className="field-hint">
+              说明：这部分是发给 DeepSeek 的 system prompt。实际业务数据，例如全文摘要、角色、节选内容，会作为 user prompt 在运行时拼接。
+            </p>
+          </Panel>
+        ))}
+      </div>
     </div>
   );
 }
@@ -952,6 +1069,15 @@ function NovelStudioPage(props: {
           title="小说成歌"
           description="先根据全文和节选生成 Suno 提示词草稿，再手动修改后提交。"
         />
+        <div className="inline-message">
+          摘要、角色提取和小说成歌草稿使用的 DeepSeek 系统提示词，已集中放到
+          {" "}
+          <Link className="inline-link" to="/assets">
+            资产库
+          </Link>
+          {" "}
+          里维护。
+        </div>
         <div className="card-grid compact">
           {[
             ["novel-full", "全文成歌"],

@@ -135,6 +135,10 @@ const emptyOverview = {
     documents: [],
     rules: []
 };
+const emptyPromptAssets = {
+    updatedAt: null,
+    assets: []
+};
 const taskStatusTextMap = {
     queued: "排队中",
     running: "处理中",
@@ -206,8 +210,9 @@ function App() {
                             ["/tasks", "任务"],
                             ["/account", "账户"],
                             ["/settings", "设置"],
+                            ["/assets", "资产库"],
                             ["/docs", "文档"]
-                        ].map(([path, label]) => (_jsx(NavLink, { to: path, className: ({ isActive }) => cx("nav-link", isActive && "nav-link-active"), children: label }, path))) }), _jsx("button", { className: "ghost-button", onClick: () => void refreshOverview(), type: "button", children: "\u5237\u65B0\u6570\u636E" })] }), _jsxs("main", { className: "page", children: [error ? _jsxs("div", { className: "error-banner", children: ["\u63A5\u53E3\u9519\u8BEF\uFF1A", error] }) : null, _jsxs(Routes, { children: [_jsx(Route, { path: "/", element: _jsx(DashboardPage, { account: overview.account, songs: overview.songs, tasks: overview.tasks, documents: overview.documents, loading: loading }) }), _jsx(Route, { path: "/quick", element: _jsx(QuickCreatePage, { onSuccess: refreshOverview, rules: overview.rules }) }), _jsx(Route, { path: "/novel", element: _jsx(NovelStudioPage, { documents: overview.documents, rules: overview.rules, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/library", element: _jsx(LibraryPage, { songs: overview.songs, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/cover", element: _jsx(CoverStudioPage, { songs: overview.songs, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/tasks", element: _jsx(TasksPage, { tasks: overview.tasks, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/account", element: _jsx(AccountPage, { account: overview.account, onRefreshAccount: refreshAccount, rules: overview.rules, syncingAccount: syncingAccount }) }), _jsx(Route, { path: "/settings", element: _jsx(SettingsPage, { onSaved: refreshOverview }) }), _jsx(Route, { path: "/docs", element: _jsx(DocsPage, {}) })] })] })] }));
+                        ].map(([path, label]) => (_jsx(NavLink, { to: path, className: ({ isActive }) => cx("nav-link", isActive && "nav-link-active"), children: label }, path))) }), _jsx("button", { className: "ghost-button", onClick: () => void refreshOverview(), type: "button", children: "\u5237\u65B0\u6570\u636E" })] }), _jsxs("main", { className: "page", children: [error ? _jsxs("div", { className: "error-banner", children: ["\u63A5\u53E3\u9519\u8BEF\uFF1A", error] }) : null, _jsxs(Routes, { children: [_jsx(Route, { path: "/", element: _jsx(DashboardPage, { account: overview.account, songs: overview.songs, tasks: overview.tasks, documents: overview.documents, loading: loading }) }), _jsx(Route, { path: "/quick", element: _jsx(QuickCreatePage, { onSuccess: refreshOverview, rules: overview.rules }) }), _jsx(Route, { path: "/novel", element: _jsx(NovelStudioPage, { documents: overview.documents, rules: overview.rules, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/library", element: _jsx(LibraryPage, { songs: overview.songs, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/cover", element: _jsx(CoverStudioPage, { songs: overview.songs, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/tasks", element: _jsx(TasksPage, { tasks: overview.tasks, onSuccess: refreshOverview }) }), _jsx(Route, { path: "/account", element: _jsx(AccountPage, { account: overview.account, onRefreshAccount: refreshAccount, rules: overview.rules, syncingAccount: syncingAccount }) }), _jsx(Route, { path: "/settings", element: _jsx(SettingsPage, { onSaved: refreshOverview }) }), _jsx(Route, { path: "/assets", element: _jsx(AssetLibraryPage, {}) }), _jsx(Route, { path: "/docs", element: _jsx(DocsPage, {}) })] })] })] }));
 }
 function DashboardPage(props) {
     const latestSongs = props.songs.slice(0, 3);
@@ -223,6 +228,62 @@ function DocsPage() {
                             "doc/system-architecture.md",
                             "README.md"
                         ].map((file) => (_jsxs("article", { className: "list-card", children: [_jsxs("div", { children: [_jsx("strong", { children: file }), _jsx("p", { children: "\u4ED3\u5E93\u5185\u7684\u6B63\u5F0F\u6587\u6863\u6587\u4EF6\u3002" })] }), _jsx(Tag, { children: "Local" })] }, file))) })] })] }));
+}
+function AssetLibraryPage() {
+    const [library, setLibrary] = useState(emptyPromptAssets);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState("");
+    useEffect(() => {
+        let cancelled = false;
+        async function loadAssets() {
+            try {
+                const result = await fetchJson("/api/prompt-assets");
+                if (!cancelled) {
+                    setLibrary(result);
+                }
+            }
+            catch (error) {
+                if (!cancelled) {
+                    setMessage(toReadableErrorMessage(error));
+                }
+            }
+            finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        }
+        void loadAssets();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+    function patchAsset(key, systemPrompt) {
+        setLibrary((current) => ({
+            ...current,
+            assets: current.assets.map((asset) => (asset.key === key ? { ...asset, systemPrompt } : asset))
+        }));
+    }
+    async function saveAssets() {
+        setSaving(true);
+        setMessage("");
+        try {
+            const result = await fetchJson("/api/prompt-assets", {
+                method: "PUT",
+                body: JSON.stringify(library)
+            });
+            setLibrary(result);
+            setMessage("资产库已保存。后续 DeepSeek 摘要、角色提取和小说成歌都会使用这里的系统提示词。");
+        }
+        catch (error) {
+            setMessage(toReadableErrorMessage(error));
+        }
+        finally {
+            setSaving(false);
+        }
+    }
+    return (_jsxs("div", { className: "single-column asset-page", children: [_jsxs(Panel, { children: [_jsx(SectionTitle, { eyebrow: "Assets", title: "\u63D0\u793A\u8BCD\u8D44\u4EA7\u5E93", description: "\u8FD9\u91CC\u7EF4\u62A4\u6240\u6709\u4F1A\u53D1\u7ED9 DeepSeek \u7684\u7CFB\u7EDF\u63D0\u793A\u8BCD\u3002\u5B83\u4EEC\u4E0D\u4F1A\u76F4\u63A5\u53D1\u7ED9 Suno\uFF0C\u4F46\u4F1A\u5F71\u54CD\u6458\u8981\u3001\u89D2\u8272\u63D0\u53D6\u3001\u5C0F\u8BF4\u6210\u6B4C\u63D0\u793A\u8BCD\u8349\u7A3F\u548C\u6700\u7EC8\u6B4C\u8BCD\u5185\u5BB9\u3002" }), _jsxs("div", { className: "settings-toolbar", children: [_jsxs("div", { className: "runtime-mode-card", children: [_jsx("span", { className: "toggle-label", children: "\u5F53\u524D\u7528\u9014" }), _jsx("span", { className: "field-hint", children: "\u5BFC\u5165\u5168\u6587\u65F6\u7684\u6458\u8981\u3001\u957F\u6587\u5206\u6BB5\u5206\u6790\u3001\u5168\u6587\u6C47\u603B\u3001\u5C0F\u8BF4\u6210\u6B4C\u8349\u7A3F\u751F\u6210\uFF0C\u90FD\u4F1A\u4F7F\u7528\u4E0B\u9762\u8FD9\u4E9B\u5927\u6A21\u578B\u7CFB\u7EDF\u63D0\u793A\u8BCD\u3002" })] }), _jsx("button", { className: "primary-button", disabled: loading || saving, onClick: () => void saveAssets(), type: "button", children: saving ? "保存中..." : "保存资产" })] }), message ? _jsx("div", { className: "inline-message", children: message }) : null] }), _jsx("div", { className: "asset-grid", children: library.assets.map((asset) => (_jsxs(Panel, { children: [_jsxs("div", { className: "asset-card-header", children: [_jsxs("div", { children: [_jsx(Tag, { tone: "accent", children: asset.targetModel }), _jsx("h3", { children: asset.title })] }), _jsx("span", { className: "asset-key", children: asset.key })] }), _jsx("p", { className: "asset-description", children: asset.description }), _jsxs("label", { className: "asset-label", children: ["\u7CFB\u7EDF\u63D0\u793A\u8BCD", _jsx("textarea", { rows: 10, value: asset.systemPrompt, onChange: (event) => patchAsset(asset.key, event.target.value) })] }), _jsx("p", { className: "field-hint", children: "\u8BF4\u660E\uFF1A\u8FD9\u90E8\u5206\u662F\u53D1\u7ED9 DeepSeek \u7684 system prompt\u3002\u5B9E\u9645\u4E1A\u52A1\u6570\u636E\uFF0C\u4F8B\u5982\u5168\u6587\u6458\u8981\u3001\u89D2\u8272\u3001\u8282\u9009\u5185\u5BB9\uFF0C\u4F1A\u4F5C\u4E3A user prompt \u5728\u8FD0\u884C\u65F6\u62FC\u63A5\u3002" })] }, asset.key))) })] }));
 }
 function QuickCreatePage(props) {
     const [title, setTitle] = useState("夜航城市");
@@ -444,7 +505,7 @@ function NovelStudioPage(props) {
             setSubmitting(false);
         }
     }
-    return (_jsxs("div", { className: "single-column novel-page", children: [_jsxs(Panel, { children: [_jsx(SectionTitle, { eyebrow: "Import", title: "\u5BFC\u5165\u5168\u6587", description: "\u540E\u7AEF\u4F1A\u81EA\u52A8\u5207\u5757\u3001\u751F\u6210\u6458\u8981\u548C\u5173\u952E\u8BCD\uFF0C\u4F5C\u4E3A\u5C0F\u8BF4\u6210\u6B4C\u7684\u77E5\u8BC6\u5E95\u5EA7\u3002" }), _jsxs("div", { className: "form-grid", children: [_jsxs("label", { children: ["\u6587\u672C\u6807\u9898", _jsx("input", { value: title, onChange: (event) => setTitle(event.target.value) })] }), _jsxs("label", { className: "full-span", children: ["\u6B63\u6587", _jsx("textarea", { placeholder: "\u7C98\u8D34\u6574\u7BC7\u5C0F\u8BF4\u3001\u7AE0\u8282\u6216\u957F\u6587\u5185\u5BB9\u3002", rows: 8, value: text, onChange: (event) => setText(event.target.value) })] })] }), _jsxs("div", { className: "import-actions", children: [_jsx("button", { className: "primary-button", onClick: () => void importDocument(), type: "button", children: importing ? "导入中..." : "导入正文" }), _jsxs("div", { className: "upload-box upload-box-inline", children: [_jsx("strong", { children: "\u6587\u4EF6\u5BFC\u5165" }), _jsxs("label", { className: "file-picker", children: [_jsx("input", { accept: ".txt,.md,.docx,.pdf", onChange: (event) => setSelectedFile(event.target.files?.[0] ?? null), type: "file" }, fileInputKey), _jsx("span", { children: selectedFile ? selectedFile.name : "选择 txt / md / docx / pdf" })] }), _jsx("button", { className: "ghost-button", disabled: !selectedFile || uploading, onClick: () => void importFile(), type: "button", children: uploading ? "上传中..." : "上传并导入" })] })] }), importMessage ? _jsx("div", { className: "inline-message", children: importMessage }) : null, _jsxs("div", { className: "imported-docs", children: [_jsx("strong", { children: "\u5DF2\u5BFC\u5165\u6587\u6863" }), props.documents.length === 0 ? (_jsx("p", { className: "import-note", children: "\u5F53\u524D\u8FD8\u6CA1\u6709\u6587\u6863\u3002\u5BFC\u5165\u540E\u4F1A\u81EA\u52A8\u9009\u4E2D\u6700\u65B0\u6587\u6863\u7528\u4E8E\u4E0B\u65B9\u751F\u6210\u3002" })) : (_jsx("div", { className: "stack-list compact-scroll imported-doc-list", children: props.documents.map((document) => (_jsxs("button", { className: cx("doc-pick", documentId === document.id && "doc-pick-active"), onClick: () => setDocumentId(document.id), type: "button", children: [_jsx("span", { children: document.title }), _jsxs("small", { children: [document.chunks.length, " chunks \u00B7 ", document.characters.slice(0, 3).join("、") || "待分析"] })] }, document.id))) }))] })] }), _jsxs(Panel, { children: [_jsx(SectionTitle, { eyebrow: "Generate", title: "\u5C0F\u8BF4\u6210\u6B4C", description: "\u5148\u6839\u636E\u5168\u6587\u548C\u8282\u9009\u751F\u6210 Suno \u63D0\u793A\u8BCD\u8349\u7A3F\uFF0C\u518D\u624B\u52A8\u4FEE\u6539\u540E\u63D0\u4EA4\u3002" }), _jsx("div", { className: "card-grid compact", children: [
+    return (_jsxs("div", { className: "single-column novel-page", children: [_jsxs(Panel, { children: [_jsx(SectionTitle, { eyebrow: "Import", title: "\u5BFC\u5165\u5168\u6587", description: "\u540E\u7AEF\u4F1A\u81EA\u52A8\u5207\u5757\u3001\u751F\u6210\u6458\u8981\u548C\u5173\u952E\u8BCD\uFF0C\u4F5C\u4E3A\u5C0F\u8BF4\u6210\u6B4C\u7684\u77E5\u8BC6\u5E95\u5EA7\u3002" }), _jsxs("div", { className: "form-grid", children: [_jsxs("label", { children: ["\u6587\u672C\u6807\u9898", _jsx("input", { value: title, onChange: (event) => setTitle(event.target.value) })] }), _jsxs("label", { className: "full-span", children: ["\u6B63\u6587", _jsx("textarea", { placeholder: "\u7C98\u8D34\u6574\u7BC7\u5C0F\u8BF4\u3001\u7AE0\u8282\u6216\u957F\u6587\u5185\u5BB9\u3002", rows: 8, value: text, onChange: (event) => setText(event.target.value) })] })] }), _jsxs("div", { className: "import-actions", children: [_jsx("button", { className: "primary-button", onClick: () => void importDocument(), type: "button", children: importing ? "导入中..." : "导入正文" }), _jsxs("div", { className: "upload-box upload-box-inline", children: [_jsx("strong", { children: "\u6587\u4EF6\u5BFC\u5165" }), _jsxs("label", { className: "file-picker", children: [_jsx("input", { accept: ".txt,.md,.docx,.pdf", onChange: (event) => setSelectedFile(event.target.files?.[0] ?? null), type: "file" }, fileInputKey), _jsx("span", { children: selectedFile ? selectedFile.name : "选择 txt / md / docx / pdf" })] }), _jsx("button", { className: "ghost-button", disabled: !selectedFile || uploading, onClick: () => void importFile(), type: "button", children: uploading ? "上传中..." : "上传并导入" })] })] }), importMessage ? _jsx("div", { className: "inline-message", children: importMessage }) : null, _jsxs("div", { className: "imported-docs", children: [_jsx("strong", { children: "\u5DF2\u5BFC\u5165\u6587\u6863" }), props.documents.length === 0 ? (_jsx("p", { className: "import-note", children: "\u5F53\u524D\u8FD8\u6CA1\u6709\u6587\u6863\u3002\u5BFC\u5165\u540E\u4F1A\u81EA\u52A8\u9009\u4E2D\u6700\u65B0\u6587\u6863\u7528\u4E8E\u4E0B\u65B9\u751F\u6210\u3002" })) : (_jsx("div", { className: "stack-list compact-scroll imported-doc-list", children: props.documents.map((document) => (_jsxs("button", { className: cx("doc-pick", documentId === document.id && "doc-pick-active"), onClick: () => setDocumentId(document.id), type: "button", children: [_jsx("span", { children: document.title }), _jsxs("small", { children: [document.chunks.length, " chunks \u00B7 ", document.characters.slice(0, 3).join("、") || "待分析"] })] }, document.id))) }))] })] }), _jsxs(Panel, { children: [_jsx(SectionTitle, { eyebrow: "Generate", title: "\u5C0F\u8BF4\u6210\u6B4C", description: "\u5148\u6839\u636E\u5168\u6587\u548C\u8282\u9009\u751F\u6210 Suno \u63D0\u793A\u8BCD\u8349\u7A3F\uFF0C\u518D\u624B\u52A8\u4FEE\u6539\u540E\u63D0\u4EA4\u3002" }), _jsxs("div", { className: "inline-message", children: ["\u6458\u8981\u3001\u89D2\u8272\u63D0\u53D6\u548C\u5C0F\u8BF4\u6210\u6B4C\u8349\u7A3F\u4F7F\u7528\u7684 DeepSeek \u7CFB\u7EDF\u63D0\u793A\u8BCD\uFF0C\u5DF2\u96C6\u4E2D\u653E\u5230", " ", _jsx(Link, { className: "inline-link", to: "/assets", children: "\u8D44\u4EA7\u5E93" }), " ", "\u91CC\u7EF4\u62A4\u3002"] }), _jsx("div", { className: "card-grid compact", children: [
                             ["novel-full", "全文成歌"],
                             ["novel-excerpt", "节选成歌"],
                             ["character-theme", "角色主题曲"],

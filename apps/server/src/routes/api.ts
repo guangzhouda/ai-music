@@ -2,11 +2,12 @@ import { z } from "zod";
 import type { FastifyInstance } from "fastify";
 
 import { genreRules } from "@ai-music/config";
-import type { AppSettings } from "@ai-music/types";
+import type { AppSettings, PromptAssetLibrary } from "@ai-music/types";
 
 import type { Env } from "../config/env.js";
 import { extractNovelTextFromUpload } from "../services/file-import-service.js";
 import type { NovelService } from "../services/novel-service.js";
+import { getPromptAssetLibrary, savePromptAssetLibrary } from "../services/prompt-asset-service.js";
 import { getSettingsSnapshot, saveRuntimeSettings } from "../services/settings-service.js";
 import type { TaskService } from "../services/task-service.js";
 
@@ -61,6 +62,19 @@ const settingsSchema = z.object({
   volcengineImageModel: z.string().min(1)
 }) satisfies z.ZodType<AppSettings>;
 
+const promptAssetSchema = z.object({
+  updatedAt: z.string().nullable(),
+  assets: z.array(
+    z.object({
+      key: z.enum(["document-analysis", "segment-analysis", "summary-merge", "novel-song-plan"]),
+      title: z.string().min(1),
+      description: z.string().min(1),
+      targetModel: z.literal("deepseek"),
+      systemPrompt: z.string().min(12)
+    })
+  )
+}) satisfies z.ZodType<PromptAssetLibrary>;
+
 export async function registerApiRoutes(
   app: FastifyInstance,
   taskService: TaskService,
@@ -83,6 +97,7 @@ export async function registerApiRoutes(
 
   app.get("/api/account", async () => taskService.syncCredits());
   app.get("/api/settings", async () => getSettingsSnapshot(runtimeEnv));
+  app.get("/api/prompt-assets", async () => getPromptAssetLibrary());
   app.get("/api/tasks", async () => {
     await taskService.reconcileStaleTasks();
     return (await taskService.getSnapshot()).tasks;
@@ -169,6 +184,11 @@ export async function registerApiRoutes(
   app.put("/api/settings", async (request) => {
     const input = settingsSchema.parse(request.body);
     return saveRuntimeSettings(runtimeEnv, input);
+  });
+
+  app.put("/api/prompt-assets", async (request) => {
+    const input = promptAssetSchema.parse(request.body);
+    return savePromptAssetLibrary(input);
   });
 
   app.delete("/api/songs/:songId", async (request) => {

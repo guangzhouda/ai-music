@@ -2,6 +2,7 @@ import type { NovelCreateInput, NovelDocument } from "@ai-music/types";
 
 import type { Env } from "../config/env.js";
 import { extractKeywords, summarizeText } from "../services/knowledge-service.js";
+import { getPromptAssetMap } from "../services/prompt-asset-service.js";
 
 export interface DocumentAnalysis {
   summary: string;
@@ -119,12 +120,12 @@ export class DeepSeekClient {
       return buildFallbackDocumentAnalysis(title, text);
     }
 
+    const promptAssets = await getPromptAssetMap();
     const segments = splitLongText(text, 12000).slice(0, 8);
 
     if (segments.length === 1) {
       return this.requestJson<DocumentAnalysis>({
-        system:
-          "你是小说分析助手。请阅读全文并输出 JSON，对象字段固定为 summary、keyThemes、characters。summary 为中文摘要；keyThemes 和 characters 都是字符串数组。",
+        system: promptAssets["document-analysis"].systemPrompt,
         user: `标题：${title}\n\n正文：\n${segments[0]}`
       });
     }
@@ -136,8 +137,7 @@ export class DeepSeekClient {
         keyThemes: string[];
         characters: string[];
       }>({
-        system:
-          "你是小说分段分析助手。请输出 JSON，对象字段固定为 summary、keyThemes、characters。保持简洁，不要输出额外文字。",
+        system: promptAssets["segment-analysis"].systemPrompt,
         user: `标题：${title}\n\n这是第 ${index + 1}/${segments.length} 段正文：\n${segments[index]}`
       });
       segmentNotes.push(
@@ -150,8 +150,7 @@ export class DeepSeekClient {
     }
 
     return this.requestJson<DocumentAnalysis>({
-      system:
-        "你是小说总览分析助手。请基于分段笔记输出 JSON，对象字段固定为 summary、keyThemes、characters。summary 需要覆盖全文主线。",
+      system: promptAssets["summary-merge"].systemPrompt,
       user: `标题：${title}\n\n分段笔记：\n${segmentNotes.join("\n\n")}`
     });
   }
@@ -166,6 +165,7 @@ export class DeepSeekClient {
       return buildFallbackSongPlan(params.document, params.input, params.relatedText, params.styleText);
     }
 
+    const promptAssets = await getPromptAssetMap();
     const modeTextMap: Record<NovelCreateInput["mode"], string> = {
       "novel-full": "全文成歌",
       "novel-excerpt": "节选成歌",
@@ -175,8 +175,7 @@ export class DeepSeekClient {
     };
 
     return this.requestJson<SongPlan>({
-      system:
-        "你是小说音乐策划助手。请基于给定小说信息生成适合 Suno 的 JSON，对象字段固定为 title、prompt、stylePrompt。prompt 必须可直接用于音乐生成；如果 makeInstrumental=true，则明确要求纯音乐、无歌词、弱化人声。",
+      system: promptAssets["novel-song-plan"].systemPrompt,
       user: [
         `标题：${params.document.title}`,
         `模式：${modeTextMap[params.input.mode]}`,

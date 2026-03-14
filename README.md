@@ -8,6 +8,7 @@
 - 任务中心
 - 账户与余额查询
 - 封面生成
+- 提示词资产库
 - Suno / DeepSeek / 火山引擎运行时设置
 
 项目已经提供可运行的前后端框架，支持 `mock` 与 `live` 两种模式。没有真实 Key 时也可以本地演示完整流程。
@@ -26,6 +27,7 @@
 - 支持全文成歌、节选成歌、角色主题曲、场景配乐、风格重编
 - 支持 `txt / md / docx / pdf` 导入
 - 先生成“提交给 Suno 的提示词草稿”，再人工修改后提交
+- 小说分析与草稿生成使用 DeepSeek
 - 当前接口：
   - `POST /api/novels/import`
   - `POST /api/novels/import-file`
@@ -65,6 +67,21 @@
 - 歌曲与封面功能分离，封面单独维护
 - 当前接口：
   - `POST /api/covers`
+
+### 提示词资产库
+
+- 独立维护 DeepSeek 的系统提示词
+- 当前内置 4 类资产：
+  - 全文分析
+  - 分段分析
+  - 总览汇总
+  - 小说成歌
+- 修改后会直接影响：
+  - 小说导入时的摘要、主题、角色提取
+  - 小说成歌草稿生成
+- 当前接口：
+  - `GET /api/prompt-assets`
+  - `PUT /api/prompt-assets`
 
 ## 技术栈
 
@@ -211,6 +228,10 @@ DEEPSEEK_MODEL=deepseek-chat
 
 - `apps/server/data/settings.json`
 
+提示词资产会持久化到：
+
+- `apps/server/data/prompt-assets.json`
+
 ## 文档
 
 项目文档在 `doc/` 目录：
@@ -249,6 +270,18 @@ DEEPSEEK_MODEL=deepseek-chat
    - 最终提交给 Suno 的歌词/内容提示词
    - 最终提交给 Suno 的风格提示词
 6. 点击“提交到 Suno”
+
+### 提示词资产库
+
+1. 打开 `资产库`
+2. 找到要修改的 DeepSeek 系统提示词
+3. 直接编辑文本并保存
+4. 之后重新导入全文或重新生成小说成歌草稿，新的系统提示词就会生效
+
+说明：
+
+- 资产库里的内容是发给 DeepSeek 的 `system prompt`
+- 小说页里暴露的“最终提交给 Suno 的提示词”是 DeepSeek 生成后的结果，不是同一层
 
 ### 音乐库
 
