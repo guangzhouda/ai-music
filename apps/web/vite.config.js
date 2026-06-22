@@ -5,6 +5,12 @@ export default defineConfig({
     base: '/music/',
     server: {
         port: 5173,
-        host: '0.0.0.0'
+        host: '0.0.0.0',
+        proxy: {
+            '/api': {
+                target: 'http://localhost:8787',
+                changeOrigin: true
+            }
+        }
     }
 });

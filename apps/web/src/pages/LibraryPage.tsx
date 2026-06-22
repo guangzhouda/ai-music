@@ -89,6 +89,7 @@ export function LibraryPage(props: { songs: Song[]; onSuccess: () => Promise<voi
                     void deleteSong(song.id);
                   }}
                   type="button"
+                  aria-label={removingSongIds.includes(song.id) ? "删除中" : `删除 ${song.title}`}
                 >
                   {removingSongIds.includes(song.id) ? "删除中" : "删除"}
                 </button>

@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
-import { Panel, Tag, cx } from "@ai-music/ui";
+import { useState } from "react";
+import { Panel, Tag } from "@ai-music/ui";
 import type { SongTask } from "@ai-music/types";
 import { SectionTitle } from "../components/SectionTitle";
 import { Metric } from "../components/Metric";
 import { EmptyState } from "../components/EmptyState";
 import { fetchJson } from "../hooks/useApi";
 import { toReadableErrorMessage } from "../data/utils";
-import { taskStatusTextMap, taskStatusLabel } from "../data/options";
+import { taskStatusLabel } from "../data/options";
 
-interface Props { tasks: SongTask[]; onSuccess: () => Promise<void>; }
+const statusToneMap: Record<SongTask["status"], "default" | "accent" | "success"> = {
+  queued: "default",
+  running: "accent",
+  succeeded: "success",
+  failed: "default"
+};
 
 export function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<void> }) {
   const sortedTasks = [...props.tasks].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
@@ -97,7 +102,7 @@ export function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<v
                   {task.errorMessage ? <small className="task-error">{task.errorMessage}</small> : null}
                 </div>
                 <div className="task-actions">
-                  <Tag tone={task.status === "succeeded" ? "success" : "default"}>
+                  <Tag tone={statusToneMap[task.status]}>
                     {taskStatusLabel(task.status)}
                   </Tag>
                   <button
@@ -137,4 +142,3 @@ export function TasksPage(props: { tasks: SongTask[]; onSuccess: () => Promise<v
     </div>
   );
 }
-

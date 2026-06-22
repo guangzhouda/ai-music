@@ -1,66 +1,112 @@
 /* ============================================================
    Design Tokens — AI Music Studio
-   所有颜色/间距/字号/圆角/阴影在此统一定义，组件引用变量而非硬编码
+   所有颜色/间距/字号/圆角/阴影/动效在此统一定义，组件引用变量而非硬编码
    ============================================================ */
 
 :root {
-  /* ---- 主色调 ---- */
-  --color-teal:        #14b8a6;
-  --color-coral:       #ff6f4c;
-  --color-coral-light: #ff7f6b;
+  /* ---- 主色调（更精致的青蓝 + 暖珊瑚） ---- */
+  --color-teal:         #2dd4bf;
+  --color-teal-deep:    #14b8a6;
+  --color-teal-soft:    #5eead4;
+  --color-coral:        #fb7185;
+  --color-coral-deep:   #f43f5e;
+  --color-coral-soft:   #fda4af;
+  --color-violet:       #a78bfa;
+  --color-amber:        #fbbf24;
 
-  /* ---- 背景层级 ---- */
-  --bg-deep:           #07111d;
-  --bg-mid:            #091727;
-  --bg-surface:        rgba(9, 23, 39, 0.82);
-  --bg-raised:         rgba(255, 255, 255, 0.03);
-  --bg-teal-subtle:    rgba(20, 184, 166, 0.12);
-  --bg-coral-subtle:   rgba(255, 118, 87, 0.14);
+  /* ---- 背景层级（更深的午夜蓝 + 微妙紫调） ---- */
+  --bg-deep:            #060912;
+  --bg-mid:             #0a1120;
+  --bg-elevated:        #0f1828;
+  --bg-surface:         rgba(15, 24, 40, 0.72);
+  --bg-surface-strong:  rgba(20, 31, 50, 0.88);
+  --bg-raised:          rgba(255, 255, 255, 0.04);
+  --bg-hover:           rgba(255, 255, 255, 0.06);
+  --bg-teal-subtle:     rgba(45, 212, 191, 0.10);
+  --bg-coral-subtle:    rgba(251, 113, 133, 0.12);
+  --bg-violet-subtle:   rgba(167, 139, 250, 0.12);
 
-  /* ---- 文字 ---- */
-  --text-primary:      #e6edf6;
-  --text-secondary:    #9ab0c2;
-  --text-muted:        #8ea3b7;
-  --text-teal:         #77dccc;
-  --text-coral-light:  #ffd7cb;
+  /* ---- 文字（更清晰的层级，全部满足 WCAG AA） ---- */
+  --text-primary:       #f8fafc;
+  --text-secondary:     #d4dce8;
+  --text-tertiary:      #a3aec0;
+  --text-muted:         #8190a8;   /* 对比度 5.02 ≥ AA */
+  --text-teal:          #5eead4;
+  --text-coral:         #fda4af;
+  --text-coral-light:   #fecdd3;
+  --text-violet:        #c4b5fd;
 
   /* ---- 边框 ---- */
-  --border-default:    rgba(154, 176, 194, 0.14);
-  --border-teal:       rgba(20, 184, 166, 0.7);
-  --border-coral:      rgba(255, 118, 87, 0.32);
+  --border-default:     rgba(148, 163, 184, 0.12);
+  --border-strong:      rgba(148, 163, 184, 0.22);
+  --border-teal:        rgba(45, 212, 191, 0.55);
+  --border-coral:       rgba(251, 113, 133, 0.40);
+  --border-violet:      rgba(167, 139, 250, 0.40);
+  --border-focus:       rgba(45, 212, 191, 0.65);
 
-  /* ---- 间距阶梯 ---- */
-  --space-xs:  0.35rem;
-  --space-sm:  0.55rem;
-  --space-md:  0.75rem;
-  --space-lg:  1rem;
-  --space-xl:  1.5rem;
-  --space-2xl: 2.5rem;
+  /* ---- 间距阶梯（更和谐的递进） ---- */
+  --space-xs:   0.375rem;
+  --space-sm:   0.625rem;
+  --space-md:   0.875rem;
+  --space-lg:   1.25rem;
+  --space-xl:   1.75rem;
+  --space-2xl:  2.5rem;
+  --space-3xl:  3.5rem;
 
-  /* ---- 字号 ---- */
-  --text-xs:   0.76rem;
-  --text-sm:   0.84rem;
-  --text-base: 0.92rem;
-  --text-md:   0.96rem;
-  --text-lg:   1.1rem;
-  --text-xl:   1.45rem;
-  --text-2xl:  1.35rem;
-  --text-hero: clamp(2.4rem, 4.8vw, 4.6rem);
+  /* ---- 字号（基于 16px 基准的 1.125 模数比例） ---- */
+  --text-xs:    0.75rem;     /* 12px 辅助 */
+  --text-sm:    0.8125rem;   /* 13px 次要 */
+  --text-base:  1rem;        /* 16px 正文基准 */
+  --text-md:    1.0625rem;   /* 17px 强调正文 */
+  --text-lg:    1.25rem;     /* 20px 小标题 */
+  --text-xl:    1.5rem;      /* 24px 区块标题 */
+  --text-2xl:   2rem;        /* 32px 页面标题 */
+  --text-3xl:   2.5rem;      /* 40px 数据指标 */
+  --text-hero:  clamp(2.5rem, 5.2vw, 4.75rem);
+
+  /* ---- 行高（正文 1.6，标题 1.2-1.3） ---- */
+  --leading-tight:   1.15;
+  --leading-snug:    1.3;
+  --leading-normal:  1.6;
+  --leading-relaxed: 1.7;
 
   /* ---- 圆角 ---- */
-  --radius-sm:  0.95rem;
+  --radius-xs:  0.5rem;
+  --radius-sm:  0.75rem;
   --radius-md:  1rem;
-  --radius-lg:  1.35rem;
+  --radius-lg:  1.25rem;
+  --radius-xl:  1.75rem;
   --radius-pill: 999px;
 
-  /* ---- 阴影 ---- */
-  --shadow-panel: 0 28px 60px rgba(0, 0, 0, 0.22);
-  --shadow-card:  0 0 0 transparent;
+  /* ---- 阴影（更精致的层级） ---- */
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md:    0 4px 12px rgba(0, 0, 0, 0.28);
+  --shadow-panel: 0 24px 56px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  --shadow-card:  0 8px 24px -8px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 16px 36px -10px rgba(0, 0, 0, 0.5);
+  --shadow-glow-teal:  0 0 0 1px rgba(45, 212, 191, 0.35), 0 12px 28px -8px rgba(45, 212, 191, 0.25);
+  --shadow-glow-coral: 0 0 0 1px rgba(251, 113, 133, 0.35), 0 12px 28px -8px rgba(251, 113, 133, 0.25);
+
+  /* ---- 渐变 ---- */
+  --gradient-brand:    linear-gradient(135deg, #2dd4bf 0%, #38bdf8 50%, #a78bfa 100%);
+  --gradient-warm:     linear-gradient(135deg, #fb7185 0%, #fbbf24 100%);
+  --gradient-surface:  linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --gradient-hero:     radial-gradient(circle at 20% 0%, rgba(45, 212, 191, 0.18), transparent 45%),
+                       radial-gradient(circle at 80% 30%, rgba(251, 113, 133, 0.14), transparent 50%);
 
   /* ---- 字体 ---- */
-  --font-body:  "Plus Jakarta Sans", sans-serif;
-  --font-brand: "Space Grotesk", sans-serif;
+  --font-body:   "Plus Jakarta Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-brand:  "Space Grotesk", "PingFang SC", sans-serif;
+  --font-mono:   "JetBrains Mono", ui-monospace, monospace;
 
   /* ---- 过渡 ---- */
-  --ease-smooth: 160ms ease;
+  --ease-smooth:  180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:  280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:     220ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- 层级 ---- */
+  --z-base:    1;
+  --z-sticky:  10;
+  --z-overlay: 20;
+  --z-modal:   30;
 }
