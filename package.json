@@ -13,6 +13,9 @@
     "dev:server": "npm run dev --workspace @ai-music/server",
     "build": "npm run build --workspace @ai-music/types && npm run build --workspace @ai-music/config && npm run build --workspace @ai-music/ui && npm run build --workspace @ai-music/server && npm run build --workspace @ai-music/web",
     "check": "npm run build",
+    "test": "npm run test --workspace @ai-music/harness",
+    "test:watch": "npm run test:watch --workspace @ai-music/harness",
+    "test:ui": "npm run test:ui --workspace @ai-music/harness",
     "format": "prettier --write ."
   },
   "devDependencies": {

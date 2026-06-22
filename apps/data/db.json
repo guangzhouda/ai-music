@@ -2,18 +2,18 @@
   "account": {
     "provider": "sunoapi",
     "mode": "mock",
-    "creditsRemaining": 0,
+    "creditsRemaining": 128,
     "callbackConfigured": true,
-    "lastCheckedAt": null
+    "lastCheckedAt": "2026-06-21T16:16:01.631Z"
   },
   "songs": [
     {
       "id": "song_c2a3ffd8",
-      "title": "长夜列车 · 角色主题曲 · 纯音乐",
+      "title": "Mock Song A",
       "mode": "character-theme",
       "status": "ready",
       "taskId": "task_d282cd8b",
-      "providerJobId": "suno_ada8ea48",
+      "providerJobId": "suno_ada8ea48:clip-1",
       "prompt": "请围绕小说《长夜列车》创作纯音乐。\n模式：角色主题曲。\n聚焦内容：主角的离乡与成长。\n摘要：第一章 他想把失去和希望写成一首歌。 旅途中他不断想起母亲、故乡与未完成的约定。\n关键词：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲、故乡与未完成的约定\n角色线索：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲\n参考内容：第二章\n\n旅途中他不断想起母亲、故乡与未完成的约定。\n第一章\n\n少年在雨夜里离开旧城。\n\n他想把失去和希望写成一首歌。\n要求：仅输出纯音乐构思，不要写歌词，不要强调人声演唱。",
       "stylePrompt": "华语流行电影感，节奏 78-96 BPM，重点配器：钢琴、弦乐 Pad、鼓组、低频合成器",
       "lyricsSnippet": "Mock lyrics for 请围绕小说《长夜列车》创作纯音乐。\n模式：角色主题曲。\n聚焦内容：主角的离乡与成长。\n摘要：第一章 他想把失去和希望写成一首歌。 旅途中他不断想起母亲、故乡与未",
@@ -30,15 +30,19 @@
       "sourceDocumentId": "doc_1ad6e7a2",
       "sourceExcerpt": "旅途中他不断想起母亲、故乡与未完成的约定。",
       "createdAt": "2026-03-13T04:53:12.299Z",
-      "updatedAt": "2026-03-13T04:53:13.522Z"
+      "updatedAt": "2026-06-21T16:16:01.634Z",
+      "makeInstrumental": false,
+      "model": "V4_5ALL",
+      "negativeTags": "",
+      "vocalGender": ""
     },
     {
       "id": "song_70a63ad8",
-      "title": "长夜列车 · 角色主题曲",
+      "title": "Mock Song A",
       "mode": "character-theme",
       "status": "ready",
       "taskId": "task_642419f8",
-      "providerJobId": "suno_f21e8aa7",
+      "providerJobId": "suno_f21e8aa7:clip-1",
       "prompt": "请围绕小说《长夜列车》创作歌曲。\n模式：角色主题曲。\n聚焦内容：主角的离乡与成长。\n核心素材：旅途中他不断想起母亲、故乡与未完成的约定。\n摘要：第一章 他想把失去和希望写成一首歌。 旅途中他不断想起母亲、故乡与未完成的约定。\n关键词：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲、故乡与未完成的约定\n角色线索：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲\n音乐风格：华语流行电影感，节奏 78-96 BPM，重点配器：钢琴、弦乐 Pad、鼓组、低频合成器",
       "stylePrompt": "华语流行电影感，节奏 78-96 BPM，重点配器：钢琴、弦乐 Pad、鼓组、低频合成器",
       "lyricsSnippet": "Mock lyrics for 请围绕小说《长夜列车》创作歌曲。\n模式：角色主题曲。\n聚焦内容：主角的离乡与成长。\n核心素材：旅途中他不断想起母亲、故乡与未完成的约定。\n摘要：第一章 他想把失",
@@ -55,15 +59,19 @@
       "sourceDocumentId": "doc_817c7f7c",
       "sourceExcerpt": "旅途中他不断想起母亲、故乡与未完成的约定。",
       "createdAt": "2026-03-13T04:52:09.311Z",
-      "updatedAt": "2026-03-13T04:52:10.538Z"
+      "updatedAt": "2026-06-21T16:16:01.640Z",
+      "makeInstrumental": false,
+      "model": "V4_5ALL",
+      "negativeTags": "",
+      "vocalGender": ""
     },
     {
       "id": "song_a60da859",
-      "title": "测试单曲",
+      "title": "Mock Song A",
       "mode": "quick",
       "status": "ready",
       "taskId": "task_e83dcb00",
-      "providerJobId": "suno_6b1c8010",
+      "providerJobId": "suno_6b1c8010:clip-1",
       "prompt": "写一首关于海边夜风和告别的流行歌",
       "stylePrompt": "mandopop-cinematic",
       "lyricsSnippet": "Mock lyrics for 写一首关于海边夜风和告别的流行歌",
@@ -77,15 +85,19 @@
       "sourceDocumentId": null,
       "sourceExcerpt": null,
       "createdAt": "2026-03-12T16:30:28.689Z",
-      "updatedAt": "2026-03-12T16:30:29.917Z"
+      "updatedAt": "2026-06-21T16:16:01.646Z",
+      "makeInstrumental": false,
+      "model": "V4_5ALL",
+      "negativeTags": "",
+      "vocalGender": ""
     },
     {
       "id": "song_a96c878c",
-      "title": "测试单曲",
+      "title": "Mock Song A",
       "mode": "quick",
       "status": "ready",
       "taskId": "task_639a8853",
-      "providerJobId": "suno_1019a7e0",
+      "providerJobId": "suno_1019a7e0:clip-1",
       "prompt": "写一首关于海边夜风和告别的流行歌",
       "stylePrompt": "mandopop-cinematic",
       "lyricsSnippet": "Mock lyrics for 写一首关于海边夜风和告别的流行歌",
@@ -99,7 +111,11 @@
       "sourceDocumentId": null,
       "sourceExcerpt": null,
       "createdAt": "2026-03-12T16:29:10.106Z",
-      "updatedAt": "2026-03-12T16:29:11.329Z"
+      "updatedAt": "2026-06-21T16:16:01.656Z",
+      "makeInstrumental": false,
+      "model": "V4_5ALL",
+      "negativeTags": "",
+      "vocalGender": ""
     }
   ],
   "tasks": [
@@ -110,12 +126,12 @@
       "status": "succeeded",
       "providerTaskId": "suno_ada8ea48",
       "provider": "sunoapi",
-      "title": "长夜列车 · 角色主题曲 · 纯音乐",
+      "title": "Mock Song A",
       "prompt": "请围绕小说《长夜列车》创作纯音乐。\n模式：角色主题曲。\n聚焦内容：主角的离乡与成长。\n摘要：第一章 他想把失去和希望写成一首歌。 旅途中他不断想起母亲、故乡与未完成的约定。\n关键词：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲、故乡与未完成的约定\n角色线索：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲\n参考内容：第二章\n\n旅途中他不断想起母亲、故乡与未完成的约定。\n第一章\n\n少年在雨夜里离开旧城。\n\n他想把失去和希望写成一首歌。\n要求：仅输出纯音乐构思，不要写歌词，不要强调人声演唱。",
       "errorMessage": null,
       "progressLabel": "歌曲已生成",
       "createdAt": "2026-03-13T04:53:12.299Z",
-      "updatedAt": "2026-03-13T04:53:13.519Z"
+      "updatedAt": "2026-06-21T16:16:01.634Z"
     },
     {
       "id": "task_642419f8",
@@ -124,12 +140,12 @@
       "status": "succeeded",
       "providerTaskId": "suno_f21e8aa7",
       "provider": "sunoapi",
-      "title": "长夜列车 · 角色主题曲",
+      "title": "Mock Song A",
       "prompt": "请围绕小说《长夜列车》创作歌曲。\n模式：角色主题曲。\n聚焦内容：主角的离乡与成长。\n核心素材：旅途中他不断想起母亲、故乡与未完成的约定。\n摘要：第一章 他想把失去和希望写成一首歌。 旅途中他不断想起母亲、故乡与未完成的约定。\n关键词：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲、故乡与未完成的约定\n角色线索：第一章、少年在雨夜里离开旧城、他想把失去和希望写成一首歌、第二章、旅途中他不断想起母亲\n音乐风格：华语流行电影感，节奏 78-96 BPM，重点配器：钢琴、弦乐 Pad、鼓组、低频合成器",
       "errorMessage": null,
       "progressLabel": "歌曲已生成",
       "createdAt": "2026-03-13T04:52:09.311Z",
-      "updatedAt": "2026-03-13T04:52:10.535Z"
+      "updatedAt": "2026-06-21T16:16:01.640Z"
     },
     {
       "id": "task_e83dcb00",
@@ -138,12 +154,12 @@
       "status": "succeeded",
       "providerTaskId": "suno_6b1c8010",
       "provider": "sunoapi",
-      "title": "测试单曲",
+      "title": "Mock Song A",
       "prompt": "写一首关于海边夜风和告别的流行歌",
       "errorMessage": null,
       "progressLabel": "歌曲已生成",
       "createdAt": "2026-03-12T16:30:28.689Z",
-      "updatedAt": "2026-03-12T16:30:29.916Z"
+      "updatedAt": "2026-06-21T16:16:01.646Z"
     },
     {
       "id": "task_639a8853",
@@ -152,12 +168,12 @@
       "status": "succeeded",
       "providerTaskId": "suno_1019a7e0",
       "provider": "sunoapi",
-      "title": "测试单曲",
+      "title": "Mock Song A",
       "prompt": "写一首关于海边夜风和告别的流行歌",
       "errorMessage": null,
       "progressLabel": "歌曲已生成",
       "createdAt": "2026-03-12T16:29:10.107Z",
-      "updatedAt": "2026-03-12T16:29:11.327Z"
+      "updatedAt": "2026-06-21T16:16:01.656Z"
     }
   ],
   "documents": [

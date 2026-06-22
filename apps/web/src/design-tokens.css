@@ -1,0 +1,66 @@
+/* ============================================================
+   Design Tokens — AI Music Studio
+   所有颜色/间距/字号/圆角/阴影在此统一定义，组件引用变量而非硬编码
+   ============================================================ */
+
+:root {
+  /* ---- 主色调 ---- */
+  --color-teal:        #14b8a6;
+  --color-coral:       #ff6f4c;
+  --color-coral-light: #ff7f6b;
+
+  /* ---- 背景层级 ---- */
+  --bg-deep:           #07111d;
+  --bg-mid:            #091727;
+  --bg-surface:        rgba(9, 23, 39, 0.82);
+  --bg-raised:         rgba(255, 255, 255, 0.03);
+  --bg-teal-subtle:    rgba(20, 184, 166, 0.12);
+  --bg-coral-subtle:   rgba(255, 118, 87, 0.14);
+
+  /* ---- 文字 ---- */
+  --text-primary:      #e6edf6;
+  --text-secondary:    #9ab0c2;
+  --text-muted:        #8ea3b7;
+  --text-teal:         #77dccc;
+  --text-coral-light:  #ffd7cb;
+
+  /* ---- 边框 ---- */
+  --border-default:    rgba(154, 176, 194, 0.14);
+  --border-teal:       rgba(20, 184, 166, 0.7);
+  --border-coral:      rgba(255, 118, 87, 0.32);
+
+  /* ---- 间距阶梯 ---- */
+  --space-xs:  0.35rem;
+  --space-sm:  0.55rem;
+  --space-md:  0.75rem;
+  --space-lg:  1rem;
+  --space-xl:  1.5rem;
+  --space-2xl: 2.5rem;
+
+  /* ---- 字号 ---- */
+  --text-xs:   0.76rem;
+  --text-sm:   0.84rem;
+  --text-base: 0.92rem;
+  --text-md:   0.96rem;
+  --text-lg:   1.1rem;
+  --text-xl:   1.45rem;
+  --text-2xl:  1.35rem;
+  --text-hero: clamp(2.4rem, 4.8vw, 4.6rem);
+
+  /* ---- 圆角 ---- */
+  --radius-sm:  0.95rem;
+  --radius-md:  1rem;
+  --radius-lg:  1.35rem;
+  --radius-pill: 999px;
+
+  /* ---- 阴影 ---- */
+  --shadow-panel: 0 28px 60px rgba(0, 0, 0, 0.22);
+  --shadow-card:  0 0 0 transparent;
+
+  /* ---- 字体 ---- */
+  --font-body:  "Plus Jakarta Sans", sans-serif;
+  --font-brand: "Space Grotesk", sans-serif;
+
+  /* ---- 过渡 ---- */
+  --ease-smooth: 160ms ease;
+}

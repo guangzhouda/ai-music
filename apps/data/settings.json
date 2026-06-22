@@ -1,0 +1,16 @@
+{
+  "mockMode": false,
+  "sunoApiKey": "",
+  "sunoBaseUrl": "https://api.sunoapi.org",
+  "sunoGeneratePath": "/api/v1/generate",
+  "sunoDetailsPath": "/api/v1/generate/record-info",
+  "sunoCreditsPath": "/api/v1/generate/credit",
+  "sunoCallbackUrl": "https://your-public-domain/api/providers/suno/callback",
+  "deepseekApiKey": "",
+  "deepseekBaseUrl": "https://api.deepseek.com",
+  "deepseekModel": "deepseek-chat",
+  "volcengineAccessKey": "",
+  "volcengineSecretKey": "",
+  "volcengineRegion": "cn-north-1",
+  "volcengineImageModel": "dreamina-v3.1"
+}
